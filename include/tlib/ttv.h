@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2019 Cem Bassoy (cem.bassoy@gmail.com)
+ *   Copyright (C) 2024 Cem Bassoy (cem.bassoy@gmail.com)
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Lesser General Public License as published by
@@ -15,9 +15,9 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef FHG_TENSOR_VECTOR_MULTIPLICATION_H
-#define FHG_TENSOR_VECTOR_MULTIPLICATION_H
+#pragma once
 
+#include "detail/tensor_times_matrix.h"
 #include "detail/tensor_times_vector.h"
 #include "detail/tensor.h"
 #include "detail/tags.h"
@@ -125,5 +125,3 @@ inline auto operator*(tlib::tensor_view<value_t> const& a,  tlib::tensor<value_t
 {
 	return tensor_times_vector(a.contraction_mode(), a.get_tensor(),  b, tlib::execution::blas, tlib::slicing::large, tlib::loop_fusion::all) ;
 }
-
-#endif // FHG_TENSOR_VECTOR_MULTIPLICATION_H

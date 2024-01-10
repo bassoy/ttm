@@ -169,13 +169,3 @@ inline void mtm_row(
 
 
 } // namespace tlib::detail
-
-#endif // TLIB_DETAIL_MV_H
-
-
-
-
-
-
-
-
