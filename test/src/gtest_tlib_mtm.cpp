@@ -19,88 +19,344 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
+#include <ostream>
 
 #include <tlib/ttv.h>
 #include "gtest_aux.h"
 
-template<class value_type, class size_type>
-inline void mtm_init( std::vector<value_type> & a, std::vector<size_type> const& na, std::vector<size_type> const& pia)
+
+template<class value_type>
+class matrix
 {
-	//row-major
-	if(pia[1] == 1)
-		for(auto i = 0ul; i < na[0]; ++i)
-			for(auto j = 0ul; j < na[1]; ++j)
-				a[j+i*na[1]] = j+1 + i*na[1];
-	//col-major
-	else
-		for(auto j = 0ul; j < na[1]; ++j)
-			for(auto i = 0ul; i < na[0]; ++i)
-				a[i+j*na[0]] = i*na[1] + j+1;
-	
+public:
+  using size_type = std::size_t;
+  using base_type = std::vector<value_type>;
+  using shape_type = std::vector<size_type>;
+
+  matrix() = delete;
+  matrix(shape_type n, value_type v = 0.0, shape_type pi = {1,2}) 
+    : base_(elements_(n),v)
+    , n_(n)
+    , pi_(pi)
+    , w_(strides_(n,pi)) 
+    {
+    }
+    
+  matrix(matrix const& other) : base_(other.base_), n_(other.n_), pi_(other.pi_), w_(other.w_) {}
+
+  inline const value_type* data() const { return this->base_.data(); }
+  inline value_type* data() { return this->base_.data(); }
+  inline base_type const&  base() const { return this->base_; }
+  inline base_type &  base() { return this->base_; }
+  inline shape_type n()    const { return this->n_; }
+  inline shape_type w()    const { return w_; }
+  inline shape_type pi()   const { return pi_; }
+  inline size_type  p()    const { return n_.size(); }
+  
+  inline bool is_cm()  const { return pi_[0] == 1; }
+  
+
+  inline value_type      & operator()(size_type i, size_type j)       { return base_[at_(i,j)]; }
+  inline value_type const& operator()(size_type i, size_type j) const { return base_[at_(i,j)]; }
+  
+  inline value_type      & operator[](size_type j)       { return base_[j]; }
+  inline value_type const& operator[](size_type j) const { return base_[j]; }
+  
+
+private:
+  base_type base_;
+  shape_type n_;
+  shape_type pi_;
+  shape_type w_;
+
+ 
+  inline auto at_(size_type i, size_type j) const{
+    return i*w_[0] + j*w_[1];
+  }
+
+  static inline auto elements_(shape_type n){
+    return std::accumulate(n.begin(), n.end(), 1ull, std::multiplies<size_type>());
+  }
+  
+  static inline auto strides_(shape_type n, shape_type pi){    
+    auto p = n.size();
+    auto w = shape_type(p,1);
+    for(auto r = 1u; r < p; ++r)
+      w[pi[r]-1] = w[pi[r-1]-1] * n[pi[r-1]-1];
+    
+    return w;
+  }
+  
+};
+
+template<class matrix_type>
+void init( matrix_type& a )
+{
+
+  auto m = a.n()[0];
+  auto n = a.n()[1];
+    
+  if (a.is_cm()){
+    for(auto j = 0ul; j < n; ++j)
+    	for(auto i = 0ul; i < m; ++i)
+        a(i,j) = j+1 + i*n;
+  }
+	else{
+  	for(auto i = 0ul; i < m; ++i)
+	  	for(auto j = 0ul; j < n; ++j)
+	  	  a(i,j) = j+1 + i*n;	  
+  }
+}
+
+template<class value_type>
+std::ostream& operator<< (std::ostream& out, matrix<value_type> const& a)
+{
+ 
+  auto m = a.n()[0];
+  auto n = a.n()[1];
+  auto is_col = a.is_cm();  
+
+  out << "[ ... " << std::endl; 
+  for(auto i = 0ul; i < m; ++i){    
+  	for(auto j = 0ul; j < n; ++j){
+  	  out << a(i,j) << ", ";
+  	}
+  	out << "..." << std::endl;
+  }
+  out << "];" << std::endl;  
+  return out;
+}
+
+template<class matrix_type>
+[[nodiscard]] matrix_type mtm(matrix_type  const& a, matrix_type  const& b)
+{
+  
+  auto M = a.n()[0];
+  auto K = a.n()[1];
+  auto N = b.n()[1];
+  assert(K == b.n()[0]);
+  
+  auto c = matrix_type ({M,N});  
+  auto cmajor = a.is_cm();
+  
+  
+  auto ar = std::cref(a);
+  auto br = std::cref(b);
+  auto cr = std::ref(c);
+  
+
+  
+  if (cmajor) 
+  {
+#pragma omp parallel for firstprivate(M,N,K, ar,br,cr)
+    for(auto j = 0ul; j < N; ++j){
+      for(auto k = 0ul; k < K; ++k){
+        auto bb = br(k,j);  
+        for(auto i = 0ul; i < M; ++i){    
+          cr(i,j) += ar(i,k) * bb;
+      	}
+      }
+    }
+  }
+  else // row
+  {
+#pragma omp parallel for firstprivate(M,N,K, ar,br,cr)
+    for(auto i = 0ul; i < M; ++i){
+      for(auto k = 0ul; k < K; ++k){
+        auto aa = a(i,k);
+      	for(auto j = 0ul; j < N; ++j){
+      	  c(i,j) += aa * b(k,j);
+      	}
+      }
+    }
+  }
+  return c;	
 }
 
 
-TEST(MatrixTimesMatrix, MM)
+template<class matrix_type>
+[[nodiscard]] matrix_type mtv(matrix_type  const& a, matrix_type  const& b)
+{
+  auto M = a.n()[0];
+  auto N = a.n()[1];
+  auto c = matrix_type ({M,1});  
+  auto cmajor = a.is_cm();
+  assert(b.n()[0] == N && b.n()[1] == 1);
+  
+  auto ar = std::cref(a);
+  auto br = std::cref(b);
+  auto cr = std::ref(c);  
+  
+  if (cmajor) 
+  {
+//#pragma omp parallel for collapse(2) firstprivate(M,N, ar,br,cr)
+    for(auto j = 0ul; j < N; ++j){
+        for(auto i = 0ul; i < M; ++i){
+          cr.get()[i] += ar.get()(i,j) * br.get()[j];
+      	}
+      }
+  }
+  else // row
+  {
+#pragma omp parallel for firstprivate(M,N, ar,br,cr)
+    for(auto i = 0ul; i < M; ++i){
+      auto cc = cr.get()[i];
+#pragma omp simd reduction(+:cc)
+    	for(auto j = 0ul; j < N; ++j){
+    	  cc += ar(i,j) * br.get()[j];
+    	}
+    	cr.get()[i] = cc;
+    }
+  }
+  return c;	
+}
+
+TEST(MatrixTimesVector, Ref)
 {
 	using value_type = double;
 	using size_type = std::size_t;
+	using indices = std::vector<size_type>;
+	//using matrix  = std::vector<value_type>;
 	
-	auto start = std::vector<size_type>(2u,3u);
-	/* auto steps =std::vector<size_type>(2u,8u); */
-	auto steps = std::vector<size_type>(2u,1u);
-	
-	std::cout << "starts = ";
-	for(auto s : start) std::cout << s << " ";
-	std::cout << ";" << std::endl;
-	
-	std::cout << "steps  = ";
-	for(auto s : steps) std::cout << s << " ";
-	std::cout << ";" << std::endl;	
+	auto start = indices(2u,2u);
+	auto steps = indices(2u,8u);
 
 	auto shapes   = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
-	
-	std::cout << "shapes:" << std::endl;
-	for(auto shape : shapes){
-  	std::cout << "shape = ";
-  	for(auto s : shape)
-  	  std::cout << s << " ";
-  	std::cout << ";" << std::endl;
+
+	for(auto const& na : shapes) 
+	{ 
+	  auto M = na[0];
+    auto N = na[1];
+    
+    auto f = std::vector<size_type>{1,2};
+    
+    auto a = matrix({M,N}, 0.0, f);
+    auto b = matrix({N,1}, 1.0, f);
+		
+		init(a);
+		
+		//std::cout << "A = " << a << std::endl;
+		//std::cout << "B = " << b << std::endl;
+
+		auto cref = mtv(a,b);
+		
+		//std::cout << "C = " << cref << std::endl;
+
+
+		auto refc = [N,&a](auto i) {
+		  auto sum = [](auto n) {
+		    return (n*(n+1))/2u;
+		  };
+		  return sum(a(i,N-1)) - sum(a(i,0)-1.0);
+		};
+
+		for(auto i = 0u; i < M; ++i){
+  		EXPECT_FLOAT_EQ(cref[i], refc(i) );
+    }
+    
 	}
-	std::cout << std::endl;
+}
 
 
+  
+TEST(MatrixTimesMatrix, Ref)
+{
+	using value_type = double;
+	using size_type  = std::size_t;
+	using indices    = std::vector<size_type>;
+	//using matrix  = std::vector<value_type>;
+	
+	auto start = indices(2u,2u);
+	auto steps = indices(2u,6u);
 
+	auto shapes = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
+  auto format = indices{1,2};
+	
+	for(auto const& na : shapes) 
+	{ 
+	  auto M = na[0];
+    auto N = na[1];
+    auto K = na[1];
+    
+    auto a = matrix({M,K}, 0.0, format);
+    auto b = matrix({K,N}, 1.0, format);
+		
+		init(a);
+
+		auto cref = mtm(a,b);
+
+
+		auto refc = [K,&a](auto i) {
+		  auto sum = [](auto n) {
+		    return (n*(n+1))/2u;
+		  };
+		  return sum(a(i,K-1)) - sum(a(i,0)-1.0);
+		};
+
+		for(auto i = 0u; i < M; ++i){
+  		for(auto j = 0u; j < N; ++j){
+    		EXPECT_FLOAT_EQ(cref(i,j), refc(i) );
+      }
+    }
+	}
+}
+
+
+TEST(MatrixTimesMatrix, Case1)
+{
+
+	using value_type = double;
+	using size_type  = std::size_t;
+	using indices    = std::vector<size_type>;
+	//using matrix  = std::vector<value_type>;
+	
+	auto start = indices(1u,2u);
+	auto steps = indices(1u,1u);
+
+	auto shapes = tlib::gtest::generate_shapes<size_type,1u>(start,steps);
+  auto format = indices{1,2};
+  	
+	auto q = 1;
+	auto p = 1;
+	
+	
 	
 	for(auto const& na : shapes) 
 	{
-		auto const nn = std::accumulate(na.begin(), na.end(), size_type{1} , std::multiplies<size_type>());
-		auto a = std::vector<value_type>(nn);
-		auto b = std::vector<value_type>(na.at(1),value_type{1});
+	  std::cout << "n = ";
+	  for(auto nn : na) std::cout << nn << " ";
+	  std::cout << std::endl;	      
+    
+    auto a = matrix(na,            0.0, f);
+    auto b = matrix({na[0],na[0]}, 1.0, f);
+    auto c = matrix(na,            0.0, f);
+    
+    auto nb = b.n();
 		
-		auto cm = std::vector<size_type>{1,2}; // column-major
-		check_mtv_init(a,na,cm);
-		std::cout << "a(col) = ";
-	  for(auto v : a) std::cout << v << " ";
-	  std::cout << ";" << std::endl;	
+		init(a);
 		
-		//check_mtv_help(tlib::detail::gemv_col<value_type,size_type>,a,b,cm,na);		
+		auto ad = a.data();
+		auto nad = na.data();
 		
-		auto rm = std::vector<size_type>{2,1}; // row-major		
-		mtm_init(a,na,rm);
-
-		std::cout << "a(row) = ";
-	  for(auto v : a) std::cout << v << " ";
-	  std::cout << ";" << std::endl;
+      mtm_row(
+			q,p,
+			a.data(), na.data(), nullptr, format.data(),
+			b.data(), nb.data(), 
+			c.data(), nullptr, nullptr, nullptr);
+		
 	  
-	  
-		
-		
-		//check_mtv_help(tlib::detail::gemv_row<value_type,size_type>,a,b,rm,na);
 	}
-	
-	
-}
 
+
+#if 0
+      inline void mtm_row(
+			size_t const q, size_t const p,
+			value_t const*const a, size_t const*const na,     size_t const*const /*wa*/, size_t const*const pia,
+			value_t const*const b, size_t const*const /*nb*/,
+			value_t      *const c, size_t const*const /*nc*/, size_t const*const /*wc*/, size_t const*const /*pic*/
+			)
+#endif			
+}
 
 
 #if 0
