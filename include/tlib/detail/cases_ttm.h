@@ -34,9 +34,7 @@ inline constexpr bool is_case_rm(size_t p, size_t m, size_t const*const pi)
 	if constexpr (case_nr == 5u) return p==2u && m == 2u && pi[0] == 2u;
 	if constexpr (case_nr == 6u) return p>=3u && pi[0]   == m;
 	if constexpr (case_nr == 7u) return p>=3u && pi[p-1] == m;
-	if constexpr (case_nr == 8u) return p>=3u && !(is_case<6u>(p,m,pi)||is_case<7u>(p,m,pi));
+	if constexpr (case_nr == 8u) return p>=3u && !(is_case_rm<6u>(p,m,pi)||is_case_rm<7u>(p,m,pi));
 }
 
 } // namespace tlib::detail
-
-#endif // TLIB_DETAIL_CASES_H
