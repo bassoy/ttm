@@ -15,9 +15,11 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
+
 #pragma once
 
-#if 0
+
 
 #include <cstddef>
 #include <stdexcept>
@@ -26,13 +28,13 @@
 #include <algorithm>
 #include <thread>
 
-#include "matrix_times_vector.h"
+#include "matrix_times_matrix.h"
 #include "workload_computation.h"
 #include "tags.h"
 #include "cases.h"
 #include "strides.h"
 #include "index.h"
-
+#if 0
 
 #ifdef USE_OPENBLAS
 #include <cblas.h>
