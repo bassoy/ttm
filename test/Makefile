@@ -1,7 +1,7 @@
 CXX :=g++
 CXX :=clang++
 
-CXX_FLAGS +=-Wextra -Wall -Wpedantic -Ofast -std=c++17 -pthread -fopenmp # -DUSE_OPENBLAS 
+CXX_FLAGS +=-Wextra -Wall -Wpedantic -Ofast -std=c++17 -pthread -fopenmp -DUSE_OPENBLAS 
 # -g -O0 -fprofile-arcs -ftest-coverage -fno-inline 
 
 INTEL_DIR :=/opt/intel/mkl
@@ -13,7 +13,7 @@ GTEST_LIB :=-lgtest -lpthread
 TLIB_INC :=-I../include
 
 #$(INTEL_INC)
-INCS +=$(TLIB_INC) -Iinclude
+INCS +=$(TLIB_INC) -Iinclude -I/usr/include/x86_64-linux-gnu/openblas-pthread
 LIBS +=$(GTEST_LIB) -lgomp -lpthread -lm -lopenblas
 
 CFILES2 = $(wildcard src/*.cpp)
