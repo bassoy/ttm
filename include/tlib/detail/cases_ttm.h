@@ -23,8 +23,8 @@ namespace tlib::detail{
 
 
 // assume that the input matrix (2nd argument) with a row-major format
-template<unsigned case_nr, typename size_t>
-inline constexpr bool is_case_rm(size_t p, size_t m, size_t const*const pi)
+template<unsigned case_nr>
+inline constexpr bool is_case_rm(unsigned p, std::size_t m, unsigned const*const pi)
 {
 	static_assert(case_nr >  0u || case_nr < 9u, "tlib::detail::is_case: only 8 cases from 1 to 8 are covered.");
 	if constexpr (case_nr == 1u) return p==1u;                            

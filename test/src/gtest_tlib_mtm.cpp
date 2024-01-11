@@ -33,9 +33,10 @@ public:
   using size_type = std::size_t;
   using base_type = std::vector<value_type>;
   using shape_type = std::vector<size_type>;
+  using permutation_type = std::vector<unsigned>;
 
   matrix() = delete;
-  matrix(shape_type n, value_type v = 0.0, shape_type pi = {1,2}) 
+  matrix(shape_type n, value_type v = 0.0, permutation_type pi = {1,2}) 
     : base_(elements_(n),v)
     , n_(n)
     , pi_(pi)
@@ -51,8 +52,14 @@ public:
   inline base_type &  base() { return this->base_; }
   inline shape_type n()    const { return this->n_; }
   inline shape_type w()    const { return w_; }
-  inline shape_type pi()   const { return pi_; }
-  inline size_type  p()    const { return n_.size(); }
+  inline permutation_type pi()   const { return pi_; }
+  inline unsigned  p()    const { return n_.size(); }
+  
+  void set(permutation_type pi)
+  {
+    pi_ = pi;
+    w_ = strides_(n_,pi_);
+  }
   
   inline bool is_cm()  const { return pi_[0] == 1; }
   
@@ -67,7 +74,7 @@ public:
 private:
   base_type base_;
   shape_type n_;
-  shape_type pi_;
+  permutation_type pi_;
   shape_type w_;
 
  
@@ -79,8 +86,8 @@ private:
     return std::accumulate(n.begin(), n.end(), 1ull, std::multiplies<size_type>());
   }
   
-  static inline auto strides_(shape_type n, shape_type pi){    
-    auto p = n.size();
+  static inline auto strides_(shape_type n, permutation_type pi){    
+    unsigned p = n.size();
     auto w = shape_type(p,1);
     for(auto r = 1u; r < p; ++r)
       w[pi[r]-1] = w[pi[r-1]-1] * n[pi[r-1]-1];
@@ -219,19 +226,26 @@ value_t refc(matrix<value_t> const& a, std::size_t N, std::size_t i)
   auto sum = [](auto n) { return (n*(n+1))/2u; };
   return sum(a(i,N-1)) - sum(a(i,0)-1.0);
 };
+
+
+template<class value_t>
+value_t refc_rm(matrix<value_t> const& a, std::size_t M, std::size_t j)
+{
+  auto sum = [](auto n) { return (n*(n+1))/2u; };
+  return sum(a(M-1,j)) - sum(a(0,j)-1.0);
+};
 		
 
 TEST(MatrixTimesVector, Ref)
 {
-	using size_type = std::size_t;
-	using indices = std::vector<size_type>;
-	//using matrix  = std::vector<value_type>;
+	using indices = std::vector<std::size_t>;
+	using permuration = std::vector<unsigned>;
 	
 	auto start = indices(2u,2u);
 	auto steps = indices(2u,8u);
 
-	auto shapes   = tlib::gtest::generate_shapes<size_type,2u>(start,steps);	
-	auto formats  = std::array<indices,2>{indices{1,2}, indices{2,1} };
+	auto shapes   = tlib::gtest::generate_shapes<std::size_t,2u>(start,steps);	
+	auto formats  = std::array<permuration,2>{permuration{1,2}, permuration{2,1} };
 
 	for(auto const& n : shapes) 
 	{ 
@@ -259,21 +273,20 @@ TEST(MatrixTimesVector, Ref)
   
 TEST(MatrixTimesMatrix, Ref)
 {
-	using size_type  = std::size_t;
-	using indices    = std::vector<size_type>;
-	//using matrix  = std::vector<value_type>;
+	using indices = std::vector<std::size_t>;
+	using permuration = std::vector<unsigned>;
 	
 	auto start = indices(2u,2u);
 	auto steps = indices(2u,6u);
 
-	auto shapes  = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
-	auto formats = std::array<indices,2>{indices{1,2}, indices{2,1} };
+	auto shapes  = tlib::gtest::generate_shapes<std::size_t,2u>(start,steps);
+	auto formats = std::array<permuration,2>{permuration{1,2}, permuration{2,1} };
 	
 	for(auto const& n : shapes) 
 	{ 
 	    auto M = n[0];
       auto N = n[1];
-      auto K = n[1];
+      auto K = n[1]*2;
 	
 	  for(auto f : formats) 
 	  {
@@ -294,18 +307,20 @@ TEST(MatrixTimesMatrix, Ref)
 	}
 }
 
-
+// 
+// A = nx1, B(rm) = mxn, C = mx1
+// C = A x1 B => c = B *(rm) a
 TEST(MatrixTimesMatrix, Case1)
 {
-	using size_type  = std::size_t;
-	using indices    = std::vector<size_type>;
+	using indices = std::vector<std::size_t>;
+	using permuration = std::vector<unsigned>;
 	
 	auto start = indices(2u,2u);
 	auto steps = indices(2u,6u);
 
-	auto shapes = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
-  auto cm = indices{1,2};
-  auto rm = indices{2,1};
+	auto shapes = tlib::gtest::generate_shapes<std::size_t,2u>(start,steps);
+  auto cm = permuration{1,2};
+  auto rm = permuration{2,1};
   	
 	auto q = 1ul;
 	auto p = 1ul;
@@ -322,6 +337,7 @@ TEST(MatrixTimesMatrix, Case1)
     auto c = matrix({m,1}, 0.0, cm);
     
     auto na = a.n();
+    auto nc = c.n();
 
 		
 		init(b);
@@ -331,7 +347,7 @@ TEST(MatrixTimesMatrix, Case1)
 		q,p,
 		a.data(), na.data(), cm.data(),
 		b.data(), nb.data(), 
-		c.data());
+		c.data(), nc.data());
 		
 	  for(auto i = 0ul; i < m; ++i)
   		EXPECT_FLOAT_EQ(c[i], refc(b,n,i) );
@@ -339,50 +355,68 @@ TEST(MatrixTimesMatrix, Case1)
 }
 
 
-/*
-TEST(MatrixTimesMatrix, Case1)
+// 
+// A(cm) = mxn, B(rm) = qxm, C(cm) = nxq
+// C = A x1 B ==> C = A *(rm) B' 
+TEST(MatrixTimesMatrix, Case2)
 {
-	using size_type  = std::size_t;
-	using indices    = std::vector<size_type>;
+	using indices     = std::vector<std::size_t>;
+	using permutation = std::vector<unsigned>;
 	
 	auto start = indices(2u,2u);
-	auto steps = indices(2u,6u);
+	auto steps = indices(2u,6u); 
+	
+	constexpr auto shape_size = 2u;
 
-	auto shapes = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
-  auto cm = indices{1,2};
-  auto rm = indices{2,1};
+	auto shapes = tlib::gtest::generate_shapes<std::size_t,shape_size>(start,steps);
+  auto cm = permutation{1,2};
+  auto rm = permutation{2,1};
   	
 	auto q = 1ul;
-	auto p = 1ul;
+	auto p = shape_size;
 	
-	for(auto const& nb : shapes) 
+	for(auto const& na : shapes) 
 	{
 	  
-	  auto n = nb[1];
-	  auto m = nb[0];
+	  auto n1 = na[0];
+	  auto n2 = na[1];	  
+	  auto m  = n1*2;
+	  
+	  ASSERT_TRUE(tlib::detail::is_case_rm<2>(p,q,cm.data()));
 
     
-    auto a = matrix({n,1}, 1.0, cm);
-    auto b = matrix({m,n}, 1.0, rm);
-    auto c = matrix({m,1}, 0.0, cm);
+    auto a = matrix({n1,n2}, 1.0, rm); 
+    auto b = matrix({m, n1}, 1.0, rm); 
+    auto c = matrix({m, n2}, 0.0, rm);
+    const auto nb = b.n();
+    const auto nc = c.n();
     
-    auto na = a.n();
-
+		init(a); 
 		
-		init(b);
+		a.set(cm);
+		c.set(cm);
 
 		
     tlib::detail::mtm_rm(
 		q,p,
 		a.data(), na.data(), cm.data(),
 		b.data(), nb.data(), 
-		c.data());
+		c.data(), nc.data()); 
 		
-	  for(auto i = 0ul; i < m; ++i)
-  		EXPECT_FLOAT_EQ(c[i], refc(b,n,i) );
+		// mtm(a,b)
+		
+		// std::cout << "a = " << a << std::endl;
+		// std::cout << "b = " << b << std::endl;
+		// std::cout << "c = " << c << std::endl;
+		
+	  for(auto i = 0u; i < m; ++i){
+  		for(auto j = 0u; j < n2; ++j){  		  
+    		EXPECT_FLOAT_EQ(c(i,j), refc_rm(a,n1,j) ); // check refc_rm. seems buggy. is not yet correctly implemented.
+      }
+    }
 	}
 }
-*/
+
 
 #if 0
 template<class value_type, class size_type, class blas_functor_type>
