@@ -22,10 +22,11 @@
 #include <ostream>
 
 #include <tlib/ttv.h>
-#include "gtest_aux.h"
+#include "gtest_aux.h" 
 
 
-template<class value_type>
+
+template<class value_type = double>
 class matrix
 {
 public:
@@ -211,9 +212,17 @@ template<class matrix_type>
   return c;	
 }
 
+
+template<class value_t>
+value_t refc(matrix<value_t> const& a, std::size_t N, std::size_t i)
+{
+  auto sum = [](auto n) { return (n*(n+1))/2u; };
+  return sum(a(i,N-1)) - sum(a(i,0)-1.0);
+};
+		
+
 TEST(MatrixTimesVector, Ref)
 {
-	using value_type = double;
 	using size_type = std::size_t;
 	using indices = std::vector<size_type>;
 	//using matrix  = std::vector<value_type>;
@@ -221,39 +230,28 @@ TEST(MatrixTimesVector, Ref)
 	auto start = indices(2u,2u);
 	auto steps = indices(2u,8u);
 
-	auto shapes   = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
+	auto shapes   = tlib::gtest::generate_shapes<size_type,2u>(start,steps);	
+	auto formats  = std::array<indices,2>{indices{1,2}, indices{2,1} };
 
-	for(auto const& na : shapes) 
+	for(auto const& n : shapes) 
 	{ 
-	  auto M = na[0];
-    auto N = na[1];
+    auto M = n[0];
+    auto N = n[1];
+	
+	  for(auto f : formats) 
+	  {
     
-    auto f = std::vector<size_type>{1,2};
-    
-    auto a = matrix({M,N}, 0.0, f);
-    auto b = matrix({N,1}, 1.0, f);
-		
-		init(a);
-		
-		//std::cout << "A = " << a << std::endl;
-		//std::cout << "B = " << b << std::endl;
+      auto a = matrix({M,N}, 0.0, f);
+      auto b = matrix({N,1}, 1.0, f);
+		  
+		  init(a);
 
-		auto cref = mtv(a,b);
-		
-		//std::cout << "C = " << cref << std::endl;
+		  auto cref = mtv(a,b);
 
-
-		auto refc = [N,&a](auto i) {
-		  auto sum = [](auto n) {
-		    return (n*(n+1))/2u;
-		  };
-		  return sum(a(i,N-1)) - sum(a(i,0)-1.0);
-		};
-
-		for(auto i = 0u; i < M; ++i){
-  		EXPECT_FLOAT_EQ(cref[i], refc(i) );
+		  for(auto i = 0ul; i < M; ++i)
+    		EXPECT_FLOAT_EQ(cref[i], refc(a,N,i) );
     }
-    
+   
 	}
 }
 
@@ -261,7 +259,6 @@ TEST(MatrixTimesVector, Ref)
   
 TEST(MatrixTimesMatrix, Ref)
 {
-	using value_type = double;
 	using size_type  = std::size_t;
 	using indices    = std::vector<size_type>;
 	//using matrix  = std::vector<value_type>;
@@ -269,33 +266,29 @@ TEST(MatrixTimesMatrix, Ref)
 	auto start = indices(2u,2u);
 	auto steps = indices(2u,6u);
 
-	auto shapes = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
-  auto format = indices{1,2};
+	auto shapes  = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
+	auto formats = std::array<indices,2>{indices{1,2}, indices{2,1} };
 	
-	for(auto const& na : shapes) 
+	for(auto const& n : shapes) 
 	{ 
-	  auto M = na[0];
-    auto N = na[1];
-    auto K = na[1];
-    
-    auto a = matrix({M,K}, 0.0, format);
-    auto b = matrix({K,N}, 1.0, format);
-		
-		init(a);
+	    auto M = n[0];
+      auto N = n[1];
+      auto K = n[1];
+	
+	  for(auto f : formats) 
+	  {
 
-		auto cref = mtm(a,b);
+      auto a = matrix({M,K}, 0.0, f);
+      auto b = matrix({K,N}, 1.0, f);
+		  
+		  init(a);
 
+		  auto cref = mtm(a,b);
 
-		auto refc = [K,&a](auto i) {
-		  auto sum = [](auto n) {
-		    return (n*(n+1))/2u;
-		  };
-		  return sum(a(i,K-1)) - sum(a(i,0)-1.0);
-		};
-
-		for(auto i = 0u; i < M; ++i){
-  		for(auto j = 0u; j < N; ++j){
-    		EXPECT_FLOAT_EQ(cref(i,j), refc(i) );
+		  for(auto i = 0u; i < M; ++i){
+    		for(auto j = 0u; j < N; ++j){
+      		EXPECT_FLOAT_EQ(cref(i,j), refc(a,K,i) );
+        }
       }
     }
 	}
@@ -304,60 +297,92 @@ TEST(MatrixTimesMatrix, Ref)
 
 TEST(MatrixTimesMatrix, Case1)
 {
-
-	using value_type = double;
 	using size_type  = std::size_t;
 	using indices    = std::vector<size_type>;
-	//using matrix  = std::vector<value_type>;
 	
-	auto start = indices(1u,2u);
-	auto steps = indices(1u,1u);
+	auto start = indices(2u,2u);
+	auto steps = indices(2u,6u);
 
-	auto shapes = tlib::gtest::generate_shapes<size_type,1u>(start,steps);
-  auto format = indices{1,2};
+	auto shapes = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
+  auto cm = indices{1,2};
+  auto rm = indices{2,1};
   	
-	auto q = 1;
-	auto p = 1;
+	auto q = 1ul;
+	auto p = 1ul;
 	
-	
-	
-	for(auto const& na : shapes) 
+	for(auto const& nb : shapes) 
 	{
-	  std::cout << "n = ";
-	  for(auto nn : na) std::cout << nn << " ";
-	  std::cout << std::endl;	      
-    
-    auto a = matrix(na,            0.0, f);
-    auto b = matrix({na[0],na[0]}, 1.0, f);
-    auto c = matrix(na,            0.0, f);
-    
-    auto nb = b.n();
-		
-		init(a);
-		
-		auto ad = a.data();
-		auto nad = na.data();
-		
-      mtm_row(
-			q,p,
-			a.data(), na.data(), nullptr, format.data(),
-			b.data(), nb.data(), 
-			c.data(), nullptr, nullptr, nullptr);
-		
 	  
+	  auto n = nb[1];
+	  auto m = nb[0];
+
+    
+    auto a = matrix({n,1}, 1.0, cm);
+    auto b = matrix({m,n}, 1.0, rm);
+    auto c = matrix({m,1}, 0.0, cm);
+    
+    auto na = a.n();
+
+		
+		init(b);
+
+		
+    tlib::detail::mtm_rm(
+		q,p,
+		a.data(), na.data(), cm.data(),
+		b.data(), nb.data(), 
+		c.data());
+		
+	  for(auto i = 0ul; i < m; ++i)
+  		EXPECT_FLOAT_EQ(c[i], refc(b,n,i) );
 	}
-
-
-#if 0
-      inline void mtm_row(
-			size_t const q, size_t const p,
-			value_t const*const a, size_t const*const na,     size_t const*const /*wa*/, size_t const*const pia,
-			value_t const*const b, size_t const*const /*nb*/,
-			value_t      *const c, size_t const*const /*nc*/, size_t const*const /*wc*/, size_t const*const /*pic*/
-			)
-#endif			
 }
 
+
+/*
+TEST(MatrixTimesMatrix, Case1)
+{
+	using size_type  = std::size_t;
+	using indices    = std::vector<size_type>;
+	
+	auto start = indices(2u,2u);
+	auto steps = indices(2u,6u);
+
+	auto shapes = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
+  auto cm = indices{1,2};
+  auto rm = indices{2,1};
+  	
+	auto q = 1ul;
+	auto p = 1ul;
+	
+	for(auto const& nb : shapes) 
+	{
+	  
+	  auto n = nb[1];
+	  auto m = nb[0];
+
+    
+    auto a = matrix({n,1}, 1.0, cm);
+    auto b = matrix({m,n}, 1.0, rm);
+    auto c = matrix({m,1}, 0.0, cm);
+    
+    auto na = a.n();
+
+		
+		init(b);
+
+		
+    tlib::detail::mtm_rm(
+		q,p,
+		a.data(), na.data(), cm.data(),
+		b.data(), nb.data(), 
+		c.data());
+		
+	  for(auto i = 0ul; i < m; ++i)
+  		EXPECT_FLOAT_EQ(c[i], refc(b,n,i) );
+	}
+}
+*/
 
 #if 0
 template<class value_type, class size_type, class blas_functor_type>
