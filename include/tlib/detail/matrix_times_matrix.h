@@ -5,7 +5,10 @@
 #include <cassert>
 #include <numeric>
 #include <algorithm>
+#include <iostream>
+
 #include <omp.h>
+
 
 
 #include "tags.h"
@@ -137,25 +140,40 @@ inline void mtm_rm(
 
 
 	
-	// B is always 
+	
+	
+	assert(q>0);
+	assert(p>0);	
 	
 	auto n1 = na[0];
 	auto n2 = na[1];
 	auto nq = na[q-1];
-	auto m = nb[0];
+	auto m  = nb[0];
 	
-	assert(nb[1] == n1);
-	assert(nc[1] == n2);
-	assert(nc[0] == m);
+	//assert(nb[1] == n1);
+	//assert(nc[1] == n2);
+
+	assert(nc[q-1] == m);
+	assert(nb[1]  == nq);
 	
+	//std::cout << "na0 = " << na[0] << std::endl;
+	//std::cout << "na1 = " << na[1] << std::endl;
+	//std::cout << "nc0 = " << nc[0] << std::endl;
+	//std::cout << "nc1 = " << nc[1] << std::endl;
+	//std::cout << "q = " << q << std::endl;
+	
+	assert(q==0 || std::equal(na,     na+q-1, nc    ));
+	assert(q==p || std::equal(na+q+1, na+p,   nc+q+1));
+	
+
 
   auto n  = num_elements(na,p) / nq;
  
 	                                               // A,x,y, m,  n,  lda
-	     if(is_case_rm<1>(p,q,pia)) mtv_row::run     (b,a,c, m, n1, n1  );            // q=1 | A(nx1),C(mx1), B(mxn) = RM      | C = A x1 B => c = B *(rm) a
+	     if(is_case_rm<1>(p,q,pia)) mtv_row::run     (b,a,c, m, n1, n1  );               // q=1 | A(nx1),C(mx1), B(mxn) = RM       | C = A x1 B => c = B *(rm) a
                                                  // a,b,c  m,  n,  k,   lda,ldb,ldc    	     
-	else if(is_case_rm<2>(p,q,pia)) mtm_row_tr2::run (a,b,c, n2, m,  n1,   n1, n1,  m ); // q=1 | A(mxn),C(nxq) = CM, B(qxm) = RM | C = A x1 B => C = A *(rm) B'
-	else if(is_case_rm<3>(p,q,pia)) mtm_row::run     (b,a,c, m,  n1, n2,   n2, n1, n1); // q=2 | A,C = CM | B = RM
+	else if(is_case_rm<2>(p,q,pia)) mtm_row_tr2::run (a,b,c, n2, m,  n1,   n1, n1,  m ); // q=1 | A(mxn),C(nxl) = CM | B(lxm) = RM | C = A x1 B => C = A *(rm) B'
+	else if(is_case_rm<3>(p,q,pia)) mtm_row::run     (b,a,c, m,  n1, n2,   n2, n1, n1);  // q=2 | A(mxn),C(mxl) = CM | B(lxn) = RM | C = A x2 B => C = B *(rm) A
 	
 	else if(is_case_rm<4>(p,q,pia)) mtm_row::run     (b,a,c, m,  n2, n1,   n1, n2, n2); // q=1 | A,C = RM | B = RM
 	else if(is_case_rm<5>(p,q,pia)) mtm_row_tr2::run (a,b,c, n1, m,  n2,   n2, m,  m ); // q=2 | A,C = RM | B = RM
