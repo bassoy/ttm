@@ -138,22 +138,16 @@ inline void mtm_rm(
 			value_t * c     , std::size_t const*const nc )
 {
 
-
-	
-	
 	
 	assert(q>0);
 	assert(p>0);	
 	
-	auto n1 = na[0];
-	auto n2 = na[1];
+	auto m  = na[0];
+	auto n  = na[1];
 	auto nq = na[q-1];
-	auto m  = nb[0];
-	
-	//assert(nb[1] == n1);
-	//assert(nc[1] == n2);
+	auto u  = nb[0];
 
-	assert(nc[q-1] == m);
+	assert(nc[q-1] == u);
 	assert(nb[1]  == nq);
 	
 	//std::cout << "na0 = " << na[0] << std::endl;
@@ -165,23 +159,21 @@ inline void mtm_rm(
 	assert(q==0 || std::equal(na,     na+q-1, nc    ));
 	assert(q==p || std::equal(na+q+1, na+p,   nc+q+1));
 	
-
-
-  auto n  = num_elements(na,p) / nq;
+  auto nn  = num_elements(na,p) / nq;
  
-	                                               // A,x,y, m,  n,  lda
-	     if(is_case_rm<1>(p,q,pia)) mtv_row::run     (b,a,c, m, n1, n1  );               // q=1 | A(nx1),C(mx1), B(mxn) = RM       | C = A x1 B => c = B *(rm) a
-                                                 // a,b,c  m,  n,  k,   lda,ldb,ldc    	     
-	else if(is_case_rm<2>(p,q,pia)) mtm_row_tr2::run (a,b,c, n2, m,  n1,   n1, n1,  m ); // q=1 | A(mxn),C(nxl) = CM | B(lxm) = RM | C = A x1 B => C = A *(rm) B'
-	else if(is_case_rm<3>(p,q,pia)) mtm_row::run     (b,a,c, m,  n1, n2,   n2, n1, n1);  // q=2 | A(mxn),C(mxl) = CM | B(lxn) = RM | C = A x2 B => C = B *(rm) A
+	                                               // A,x,y, m, n, lda
+	     if(is_case_rm<1>(p,q,pia)) mtv_row::run     (b,a,c, u, m, m  );               // q=1 | A(u,1),C(m,1), B(m,u) = RM       | C = A x1 B => c = B *(rm) a
+                                                 // a,b,c  m, n, k,   lda,ldb,ldc    	     
+	else if(is_case_rm<2>(p,q,pia)) mtm_row_tr2::run (a,b,c, n, u, m,   m, m, u );  // q=1     | A(m,n),C(u,n) = CM , B(u,m) = RM | C = A x1 B => C = A *(rm) B'
+	else if(is_case_rm<3>(p,q,pia)) mtm_row::run     (b,a,c, u, m, n,   n, m, m );  // q=2     | A(m,n),C(m,u) = CM , B(u,n) = RM | C = A x2 B => C = B *(rm) A
 	
-	else if(is_case_rm<4>(p,q,pia)) mtm_row::run     (b,a,c, m,  n2, n1,   n1, n2, n2); // q=1 | A,C = RM | B = RM
-	else if(is_case_rm<5>(p,q,pia)) mtm_row_tr2::run (a,b,c, n1, m,  n2,   n2, m,  m ); // q=2 | A,C = RM | B = RM
+	else if(is_case_rm<4>(p,q,pia)) mtm_row::run     (b,a,c, u, n, m,   m, n, n );  // q=1     | A(m,n),C(u,n) = RM , B(u,m) = RM | C = A x1 B => C = B *(rm) A
+	else if(is_case_rm<5>(p,q,pia)) mtm_row_tr2::run (a,b,c, m, u, n,   n, n, u );  // q=2     | A(m,n),C(m,u) = RM , B(u,n) = RM | C = A x2 B => C = A *(rm) B'
 	
-	else if(is_case_rm<6>(p,q,pia)) mtm_row_tr2::run (a,b,c, n, nq,  nq,   nq, m,  m); // q=pi(1) | A,C = RM | B = RM
-	else if(is_case_rm<7>(p,q,pia)) mtm_row::run     (b,a,c, m, n,   nq,   nq, n,  n); // q=pi(p) | A,C = RM | B = RM
+	else if(is_case_rm<6>(p,q,pia)) mtm_row_tr2::run (a,b,c, nn,u,nq,   nq,nq, u);   // q=pi(1) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
+	else if(is_case_rm<7>(p,q,pia)) mtm_row::run     (b,a,c, u, nn,nq, nq, nn, nn); // q=pi(p) | A,C = RM | B = RM
 	
-}
+}  
 
 
 
