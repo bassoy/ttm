@@ -162,7 +162,7 @@ inline void mtm_rm(
   auto nn  = num_elements(na,p) / nq;
  
 	                                               // A,x,y, m, n, lda
-	     if(is_case_rm<1>(p,q,pia)) mtv_row::run     (b,a,c, u, m, m  );               // q=1 | A(u,1),C(m,1), B(m,u) = RM       | C = A x1 B => c = B *(rm) a
+	     if(is_case_rm<1>(p,q,pia)) mtv_row::run     (b,a,c, u, m, m  );            // q=1 | A(u,1),C(m,1), B(m,u) = RM       | C = A x1 B => c = B *(rm) a
                                                  // a,b,c  m, n, k,   lda,ldb,ldc    	     
 	else if(is_case_rm<2>(p,q,pia)) mtm_row_tr2::run (a,b,c, n, u, m,   m, m, u );  // q=1     | A(m,n),C(u,n) = CM , B(u,m) = RM | C = A x1 B => C = A *(rm) B'
 	else if(is_case_rm<3>(p,q,pia)) mtm_row::run     (b,a,c, u, m, n,   n, m, m );  // q=2     | A(m,n),C(m,u) = CM , B(u,n) = RM | C = A x2 B => C = B *(rm) A
@@ -170,8 +170,8 @@ inline void mtm_rm(
 	else if(is_case_rm<4>(p,q,pia)) mtm_row::run     (b,a,c, u, n, m,   m, n, n );  // q=1     | A(m,n),C(u,n) = RM , B(u,m) = RM | C = A x1 B => C = B *(rm) A
 	else if(is_case_rm<5>(p,q,pia)) mtm_row_tr2::run (a,b,c, m, u, n,   n, n, u );  // q=2     | A(m,n),C(m,u) = RM , B(u,n) = RM | C = A x2 B => C = A *(rm) B'
 	
-	else if(is_case_rm<6>(p,q,pia)) mtm_row_tr2::run (a,b,c, nn,u,nq,   nq,nq, u);   // q=pi(1) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
-	else if(is_case_rm<7>(p,q,pia)) mtm_row::run     (b,a,c, u, nn,nq, nq, nn, nn); // q=pi(p) | A,C = RM | B = RM
+	else if(is_case_rm<6>(p,q,pia)) mtm_row_tr2::run (a,b,c, nn,u,nq,   nq,nq, u);  // q=pi(1) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
+	else if(is_case_rm<7>(p,q,pia)) mtm_row::run     (b,a,c, u,nn,nq,   nq,nn,nn);  // q=pi(p) | A(nq,nn),C(u,nn)   , B(u,nq) = RM | C = A xq B => C = B *(rm) A
 	
 }  
 
