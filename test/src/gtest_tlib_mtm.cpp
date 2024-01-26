@@ -779,7 +779,7 @@ TEST(MatrixTimesMatrix, Case5)
 
 
 
-// q=2 | A(m,n),C(m,u) = RM | B(u,n) = RM | C = A x2 B => C = A *(rm) B'
+// q=pi(1) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
 TEST(MatrixTimesMatrix, Case6)
 {
 	using indices     = std::vector<std::size_t>;
@@ -930,169 +930,152 @@ TEST(MatrixTimesMatrix, Case6)
 }
 
 
-#if 0
-template<class value_type, class size_type, class blas_functor_type>
-inline void check_mtm_help(
-		blas_functor_type&& blas_function,
-		std::vector<value_type> const& a,
-		std::vector<value_type> const& b,
-		std::vector<size_type> pia,
-		std::vector<size_type> na)
+
+// q=pi(p) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
+TEST(MatrixTimesMatrix, Case7)
 {
-	assert(pia.size() == 2u);
-	assert(na .size() == 2u);
+	using indices     = std::vector<std::size_t>;
+	using permutation = std::vector<unsigned>;
 	
-	auto const pic = pia;
-	auto const nc  = na;
+	auto start = indices(3u,2u);
+	auto steps = indices(3u,4u); 
 	
-	auto const m = na[0];
-	auto const n = na[1];
-	
-	assert(m > 0);
-	assert(n > 0);	
-	assert(n == b.size());
-	
-	auto c = std::vector<value_type>(m,0);
-	
-	auto const lda = pia[0]==1?m:n;
-	
-	blas_function(a.data(),b.data(),c.data(),m,n,lda);
-	
-/*	
-	std::cout << "a = ";
-	std::copy(a.begin(),a.end(),std::ostream_iterator<value_type>(std::cout," "));
-	std::cout << std::endl;
-	
-	std::cout << "b = ";
-	std::copy(b.begin(),b.end(),std::ostream_iterator<value_type>(std::cout," "));
-	std::cout << std::endl;
+	constexpr auto shape_size = 3u;
 
-	std::cout << "c = ";
-	std::copy(c.begin(),c.end(),std::ostream_iterator<value_type>(std::cout," "));
-	std::cout << std::endl;
-*/	
-
-	auto fn = [n](auto i){ return (i*n*(i*n+1))/2; };
-	
-	for(auto i = 1ul; i <= m; ++i){		
-		const auto j = fn(i);				
-		const auto k =  i>0ul ? fn(i-1) : 0ul;		
-		const auto sum = j-k;
-		EXPECT_EQ( c[i-1], sum );
-	}
-
-
-}
-
-
-template<class value_type, class size_type>
-inline void initialize_matrix( std::vector<value_type> & a, std::vector<size_type> const& na, std::vector<size_type> const& pia)
-{
-  assert(na. size() == 2u);
-  assert(pia.size() == 2u);
-  
-  auto m = na[0];
-  auto n = na[1];
-
-/* a = [1 2 3
-        4 5 6] */
-	//row-major
-	if(pia[1] == 1)
-		for(auto i = 0ul; i < m; ++i) // 0,1
-			for(auto j = 0ul; j < n; ++j) // 0,1,2
-				a[j+i*n] = j+1 + i*n;
-/* a = [1  2 5
-        3 4 6] */
-	//col-major
-	else
-		for(auto j = 0ul; j < n; ++j) // 0,1,2
-			for(auto i = 0ul; i < m; ++i) // 0,1
-				a[i+j*m] = j+1 + i*n;
-	
-}
-
-
-TEST(MatrixTimesVector, Gemv)
-{
-	using value_type = double;
-	using size_type = std::size_t;
-	
-	auto start = std::vector<size_type>(2u,2u);
-	/* auto steps =std::vector<size_type>(2u,8u); */
-	auto steps =std::vector<size_type>(2u,10u);
-	
-	auto shapes   = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
+	auto shapes = tlib::gtest::generate_shapes<std::size_t,shape_size>(start,steps);
+  auto rm = permutation{2,1};
+ 	auto p = shape_size;
 	
 	for(auto const& na : shapes) 
 	{
-		auto const nn = std::accumulate(na.begin(), na.end(), size_type{1} , std::multiplies<size_type>());
-		auto a = std::vector<value_type>(nn);
-		auto b = std::vector<value_type>(na.at(1),value_type{1});
+	
+		auto q = 1ul;
+		auto layouts = std::vector<permutation>{ {3,2,1}, {2,3,1} } ;
 		
-		auto cm = std::vector<size_type>{1,2}; // column-major
-		check_mtv_init(a,na,cm);		
-		check_mtv_help(tlib::detail::gemv_col<value_type,size_type>,a,b,cm,na);		
-		
-		auto rm = std::vector<size_type>{2,1}; // row-major		
-		check_mtv_init(a,na,rm);
-		check_mtv_help(tlib::detail::gemv_row<value_type,size_type>,a,b,rm,na);
-	}
-}
+		for(auto const& layout : layouts)
+		{
+	  
+	    auto M = na[0];
+	    auto N = na[1];
+	    auto K = na[2];
+	    auto U = na[q-1]*2;
+      
+      auto a = cube  ({M,N,K}, 1.0, layout); 
+      auto b = matrix({U,M},   1.0, rm); 
+      auto c = cube  ({U,N,K}, 0.0, layout);
+      const auto nb = b.n();
+      const auto nc = c.n();
+      const auto pia = a.pi(); 
+      
+      ASSERT_TRUE(tlib::detail::is_case_rm<7>(p,q,pia.data()));
+      
+		  init(a,q); 
 
-
-TEST(MatrixTimesVector, GemvParallel)
-{
-	using value_type = double;
-	using size_type = std::size_t;
-	
-	const auto start = std::vector<size_type>(2u,2u);
-	/* const auto steps =std::vector<size_type>(2u,8u); */
-	const auto steps =std::vector<size_type>(2u,10u);
-	
-	const auto shapes   = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
-	
-	for(auto const& na : shapes) 
-	{
-		auto const nn = std::accumulate(na.begin(), na.end(), size_type{1} , std::multiplies<size_type>());
-		auto a = std::vector<value_type>(nn);
-		auto b = std::vector<value_type>(na.at(1),value_type{1});
-		
-		auto cm = std::vector<size_type>{1,2}; // column-major
-		check_mtv_init(a,na,cm);		
-		check_mtv_help(tlib::detail::gemv_col_parallel<value_type,size_type>,a,b,cm,na);		
-		
-		auto rm = std::vector<size_type>{2,1}; // row-major		
-		check_mtv_init(a,na,rm);
-		check_mtv_help(tlib::detail::gemv_row_parallel<value_type,size_type>,a,b,rm,na);
-	}
-}
-
-
-TEST(MatrixTimesVector, GemvBLAS)
-{
-	using value_type = float;
-	using size_type = std::size_t;
-	
-	const auto start = std::vector<size_type>(2u,2u);
-	const auto steps =std::vector<size_type>(2u,8u);
-	
-	const auto shapes   = tlib::gtest::generate_shapes<size_type,2u>(start,steps);
+      tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());   
+		  
+		  //std::cout << "q = " << q << std::endl;
+		  //std::cout << "a = " << a << std::endl;
+		  //std::cout << "b = " << b << std::endl;
+		  //std::cout << "c = " << c << std::endl; 
+		  
+		  for(auto k = 0u; k < K; ++k){
+    	  for(auto j = 0u; j < N; ++j){
+      	  for(auto i = 0u; i < U; ++i){ 
+        		EXPECT_FLOAT_EQ(c(i,j,k), refc(a,j,k,q) );
+          }
+        }
+      }
+      
+      
+	  }	// layouts
+  } // shapes
 	
 	for(auto const& na : shapes) 
 	{
-		auto const nn = std::accumulate(na.begin(), na.end(), size_type{1} , std::multiplies<size_type>());
-		auto a = std::vector<value_type>(nn);
-		auto b = std::vector<value_type>(na.at(1),value_type{1});
+	
+		auto q = 2ul;
+		auto layouts = std::vector<permutation>{ {1,3,2}, {3,1,2} } ;
 		
-		auto cm = std::vector<size_type>{1,2}; // column-major
-		check_mtv_init(a,na,cm);		
-		check_mtv_help(tlib::detail::gemv_col_blas<value_type,size_type>,a,b,cm,na);		
+		for(auto const& layout : layouts)
+		{
+	  
+	    auto M = na[0];
+	    auto N = na[1];
+	    auto K = na[2];
+	    auto U = na[q-1]*2;
+      
+      auto a = cube  ({M,N,K}, 1.0, layout); 
+      auto b = matrix({U,N},   1.0, rm); 
+      auto c = cube  ({M,U,K}, 0.0, layout);
+      const auto nb = b.n();
+      const auto nc = c.n();
+      const auto pia = a.pi(); 
+      
+      ASSERT_TRUE(tlib::detail::is_case_rm<7>(p,q,pia.data()));
+      
+		  init(a, q); 
+
+      tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());   
+		  
+		  //std::cout << "q = " << q << std::endl;
+		  //std::cout << "a = " << a << std::endl;
+		  //std::cout << "b = " << b << std::endl;
+		  //std::cout << "c = " << c << std::endl; 
+		  
+		  for(auto k = 0u; k < K; ++k){
+    	  for(auto j = 0u; j < U; ++j){
+      	  for(auto i = 0u; i < M; ++i){ 
+        		EXPECT_FLOAT_EQ(c(i,j,k), refc(a,i,k,q) );
+          }
+        }
+      }
+      
+      
+	  }	// layouts
+  } // shapes
+
+
+	for(auto const& na : shapes) 
+	{
+	
+		auto q = 3ul;
+		auto layouts = std::vector<permutation>{ {1,2,3}, {2,1,3} } ;
 		
-		auto rm = std::vector<size_type>{2,1}; // row-major		
-		check_mtv_init(a,na,rm);
-		check_mtv_help(tlib::detail::gemv_row_blas<value_type,size_type>,a,b,rm,na);
-	}
+		for(auto const& layout : layouts)
+		{
+	  
+	    auto M = na[0];
+	    auto N = na[1];
+	    auto K = na[2];
+	    auto U = na[q-1]*2;
+      
+      auto a = cube  ({M,N,K}, 1.0, layout); 
+      auto b = matrix({U,K},   1.0, rm); 
+      auto c = cube  ({M,N,U}, 0.0, layout);
+      const auto nb = b.n();
+      const auto nc = c.n();
+      const auto pia = a.pi(); 
+      
+      ASSERT_TRUE(tlib::detail::is_case_rm<7>(p,q,pia.data()));
+      
+		  init(a, q); 
+
+      tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());   
+		  
+		  //std::cout << "q = " << q << std::endl;
+		  //std::cout << "a = " << a << std::endl;
+		  //std::cout << "b = " << b << std::endl;
+		  //std::cout << "c = " << c << std::endl; 
+		  
+		  for(auto k = 0u; k < U; ++k){
+    	  for(auto j = 0u; j < N; ++j){
+      	  for(auto i = 0u; i < M; ++i){ 
+        		EXPECT_FLOAT_EQ(c(i,j,k), refc(a,i,j,q) );
+          }
+        }
+      }
+      
+      
+	  }	// layouts
+  } // shapes
 }
-
-
-#endif
