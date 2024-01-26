@@ -1,4 +1,4 @@
-High-Performance Tensor-Vector Multiplication Library (TTV)
+High-Performance Tensor-Vector Multiplication Library (TTM)
 =====
 [![Language](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://github.com/bassoy/ttv/blob/master/LICENSE)
@@ -7,17 +7,23 @@ High-Performance Tensor-Vector Multiplication Library (TTV)
 [![Build Status](https://travis-ci.org/bassoy/ttv.svg?branch=master)](https://travis-ci.org/bassoy/ttv)
 
 ## Summary
-**TTV** is C++ high-performance tensor-vector multiplication **header-only library**
-It provides free C++ functions for parallel computing the **mode-`q` tensor-times-vector product** of the general form
+**TTM** is C++ high-performance tensor-matrix multiplication **header-only library**
+It provides free C++ functions for parallel computing the **mode-`q` tensor-times-matrix product** of the general form
 
-![ttv](https://github.com/bassoy/ttv/blob/master/misc/equation.png)
+$$
+\Large
+\underline{\mathbf{C}} = \underline{\mathbf{A}} \bullet_q \mathbf{B} \quad :\Leftrightarrow \quad
+\underline{\mathbf{C}} (i_1, \dots, i_{q-1}, j, i_{q+1}, \dots, i_p) = \sum_{i_q=1}^{n_q} \underline{\mathbf{A}}({i_1, \dots, i_q,  \dots, i_p}) \cdot \mathbf{B}({j,i_q}).
+$$
 
-where `q` is the contraction mode, `A` and `C` are tensors of order `p` and `p-1`, respectively, `b` is a tensor of order `1`, thus a vector.
-Simple examples of tensor-vector multiplications are the inner-product `c = a[i] * b[i]` with `q=1` and the matrix-vector multiplication `c[i] = A[i,j] * b[j]` with `q=2`.
-The number of dimensions (order) `p` and the dimensions `n[r]` as well as a non-hierarchical storage format `pi` of the tensors `A` and `C` can be chosen at runtime.
+where $q$ is the contraction mode, $\underline{\mathbf{A}}$ and $\underline{\mathbf{C}}$ are tensors of order $p$ with shapes $\mathbf{n}\_a= (n\_1,\dots n\_{q-1},n\_q ,n\_{q+1},\dots,n\_p)$ and $\mathbf{n}\_c = (n\_1,\dots,n\_{q-1},m,n\_{q+1},\dots,n\_p)$, respectively.
+The order-$2$ tensor $\mathbf{B}$ is a matrix with shape $\mathbf{n}\_b = (m,n\_{q})$.
 
-All function implementations are based on the Loops-Over-GEMM (LOG) approach and utilize high-performance `GEMV` or `DOT` routines of `BLAS` such as OpenBLAS or Intel MKL without transposing the tensor.
-The library is an extension of the [boost/ublas](https://github.com/boostorg/ublas) tensor library containing the sequential version. Implementation details and runtime behevior of the tensor-vector multiplication functions are described in the [research paper article](https://link.springer.com/chapter/10.1007/978-3-030-22734-0_3).
+A simple example of the tensor-matrix multiplication is the matrix-matrix multiplication with $\mathbf{C} = \mathbf{B} \cdot \mathbf{A}$ with $q=1$.
+The number of dimensions (order) $p$ and the dimensions $n_r$ as well as the linear tensor layout $\mathbf{\pi}$ of the tensors $\underline{\mathbf{A}}$ and $\underline{\mathbf{C}}$ can be chosen at runtime.
+
+All function implementations are based on the Loops-Over-GEMM (LOG) approach and utilize high-performance `GEMM` or `GEMV` routines of `BLAS` such as OpenBLAS or Intel MKL without transposing the tensor.
+The library is an extension of the [boost/ublas](https://github.com/boostorg/ublas) tensor library containing the sequential version. Implementation details and runtime behevior of the tensor-matrix multiplication functions are described in ???.
 
 Please have a look at the [wiki](https://github.com/bassoy/ttv/wiki) page for more informations about the **usage**, **function interfaces** and the **setting parameters**.
 
@@ -25,8 +31,8 @@ Please have a look at the [wiki](https://github.com/bassoy/ttv/wiki) page for mo
 
 ### Flexibility
 * Contraction mode `q`, tensor order `p`, tensor extents `n` and tensor layout `pi` can be chosen at runtime
-* Supports any non-hierarchical storage format inlcuding the first-order and last-order storage layouts
-* Offers two high-level and one C-like low-level interfaces for calling the tensor-times-vector multiplication
+* Supports any linear tensor layout inlcuding the first-order and last-order storage layouts
+* Offers two high-level and one C-like low-level interfaces for calling the tensor-times-matrix multiplication
 * Implemented independent of a tensor data structure (can be used with `std::vector` and `std::array`)
 * Supports float, double, complex and double complex data types (and more if a BLAS library is not used)
 
@@ -34,7 +40,7 @@ Please have a look at the [wiki](https://github.com/bassoy/ttv/wiki) page for mo
 * Multi-threading support with OpenMP
 * Can be used with and without a BLAS implementation
 * Performs in-place operations without transposing the tensor - no extra memory needed
-* For large tensors reaches peak matrix-times-vector performance
+* For large tensors reaches peak matrix-times-matrix performance
 
 ### Requirements
 * Requires the tensor elements to be contiguously stored in memory.
@@ -60,7 +66,7 @@ The contraction mode `q` has also been varied from `1` to the tensor order.
 
 ### Symmetrically-Shaped Tensors
 
-**TTV** has been executed with parameters `tlib::execution::blas`, `tlib::slicing::large` and `tlib::loop_fusion::all`
+**TTM** has been executed with parameters `tlib::execution::blas`, `tlib::slicing::large` and `tlib::loop_fusion::all`
 
 <table>
 <tr>
@@ -75,7 +81,7 @@ The contraction mode `q` has also been varied from `1` to the tensor order.
 
 ### Asymmetrically-Shaped Tensors
 
-**TTV** has been executed with parameters `tlib::execution::blas`, `tlib::slicing::small` and `tlib::loop_fusion::all`
+**TTM** has been executed with parameters `tlib::execution::blas`, `tlib::slicing::small` and `tlib::loop_fusion::all`
 
 <table>
 <tr>
@@ -132,20 +138,4 @@ Compile with `g++ -I../include/ -std=c++17 -Ofast -fopenmp main.cpp -o main` and
 
 # Citation
 
-If you want to refer to TTV as part of a research paper, please cite the article [Design of a High-Performance Tensor-Vector Multiplication with BLAS](https://link.springer.com/chapter/10.1007/978-3-030-22734-0_3)
-
-```
-@inproceedings{ttv:bassoy:2019,
-  author="Bassoy, Cem",
-  editor="Rodrigues, Jo{\~a}o M. F. and Cardoso, Pedro J. S. and Monteiro, J{\^a}nio and Lam, Roberto and Krzhizhanovskaya, Valeria V. and Lees, Michael H. and Dongarra, Jack J. and Sloot, Peter M.A.",
-  title="Design of a High-Performance Tensor-Vector Multiplication with BLAS",
-  booktitle="Computational Science -- ICCS 2019",
-  year="2019",
-  publisher="Springer International Publishing",
-  address="Cham",
-  pages="32--45",
-  isbn="978-3-030-22734-0"
-}
-``` 
-
-
+If you want to refer to TTV as part of a research paper, please cite the article
