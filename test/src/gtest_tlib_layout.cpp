@@ -190,9 +190,3 @@ TEST_F(LayoutTest, inverse_mode)
 		}
 	}		
 }
-
-
-
-
-
-
