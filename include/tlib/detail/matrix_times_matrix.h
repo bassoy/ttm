@@ -141,6 +141,7 @@ inline void mtm_rm(
 	
 	assert(q>0);
 	assert(p>0);	
+	assert(!is_case_rm<8>(p,q,pia));
 	
 	auto m  = na[0];
 	auto n  = na[1];
