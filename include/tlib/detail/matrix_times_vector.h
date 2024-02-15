@@ -23,7 +23,7 @@
 #endif
 
 
-namespace tlib::detail {
+namespace tlib::ttv::detail {
 
 
 /** \brief computes 2d-slice-times-vector
@@ -45,44 +45,44 @@ namespace tlib::detail {
 */
 template<class value_t, class size_t>
 static inline void gemv_row(
-		value_t const*const __restrict a,
-		value_t const*const __restrict b,
-		value_t      *const __restrict c,
-		size_t const M, // nn
-		size_t const N, // na_m
-		size_t const lda) // na_m usually as
+        value_t const*const __restrict a,
+        value_t const*const __restrict b,
+        value_t      *const __restrict c,
+        size_t const M, // nn
+        size_t const N, // na_m
+        size_t const lda) // na_m usually as
 {
-	for(auto i = 0ul; i < M; ++i){ // over row
-		auto const*const __restrict arow = a+i*lda;
-		auto sum = value_t{};
-		#pragma omp simd reduction (+:sum) // aligned (arow,b : 32)
-		for(auto k = 0ul; k < N; ++k){ // over column
-			sum += arow[k] * b[k];
-		}
-		c[i] = sum;
-	}
-}	
+    for(auto i = 0ul; i < M; ++i){ // over row
+        auto const*const __restrict arow = a+i*lda;
+        auto sum = value_t{};
+        #pragma omp simd reduction (+:sum) // aligned (arow,b : 32)
+        for(auto k = 0ul; k < N; ++k){ // over column
+            sum += arow[k] * b[k];
+        }
+        c[i] = sum;
+    }
+}
 
 template<class value_t, class size_t>
 static inline void gemv_row_parallel(
-		value_t const*const __restrict a,
-		value_t const*const __restrict b,
-		value_t      *const __restrict c,
-		size_t const M, // nn
-		size_t const N, // na_m
-		size_t const lda) // na_m usually as
+        value_t const*const __restrict a,
+        value_t const*const __restrict b,
+        value_t      *const __restrict c,
+        size_t const M, // nn
+        size_t const N, // na_m
+        size_t const lda) // na_m usually as
 {
-	#pragma omp parallel for firstprivate(a,b,c,N,lda,M)
-	for(auto i = 0ul; i < M; ++i){ // over row
-		auto const*const __restrict arow = a+i*lda;
-		auto sum = value_t{};
-		#pragma omp simd reduction (+:sum) // aligned (arow,b : 32)
-		for(auto k = 0ul; k < N; ++k){ // over column
-			sum += arow[k] * b[k];
-		}
-		c[i] = sum;
-	}
-}	
+    #pragma omp parallel for firstprivate(a,b,c,N,lda,M)
+    for(auto i = 0ul; i < M; ++i){ // over row
+        auto const*const __restrict arow = a+i*lda;
+        auto sum = value_t{};
+        #pragma omp simd reduction (+:sum) // aligned (arow,b : 32)
+        for(auto k = 0ul; k < N; ++k){ // over column
+            sum += arow[k] * b[k];
+        }
+        c[i] = sum;
+    }
+}
 /** \brief computes 2d-slice-times-vector
  *
  * a is a 2d-slice (M x N) i.e. (na_pia_1 x na_m or nn x na_m) where every COLUMN is CONTIGUOUSLY stored in memory.
@@ -99,74 +99,74 @@ static inline void gemv_row_parallel(
 */
 template<class value_t, class size_t>
 inline void gemv_col(
-		value_t const*const __restrict a,
-		value_t const*const __restrict b,
-		value_t      *const __restrict c,
-		size_t const M, // nn
-		size_t const N, // na_m
-		size_t const lda) // wa_m
+        value_t const*const __restrict a,
+        value_t const*const __restrict b,
+        value_t      *const __restrict c,
+        size_t const M, // nn
+        size_t const N, // na_m
+        size_t const lda) // wa_m
 {
 
-	for(unsigned i = 0; i < N; ++i){
-		auto const*const __restrict a0 = a+i*lda;
-		auto      *const __restrict c0 = c;
-		const auto bb = b[i];
+    for(unsigned i = 0; i < N; ++i){
+        auto const*const __restrict a0 = a+i*lda;
+        auto      *const __restrict c0 = c;
+        const auto bb = b[i];
 
-		#pragma omp simd // aligned (c0,a0 : 32)
-		for(unsigned j = 0; j < M; ++j){
-			c0[j] += a0[j]  * bb;
-		}
-	}
-}	
+        #pragma omp simd // aligned (c0,a0 : 32)
+        for(unsigned j = 0; j < M; ++j){
+            c0[j] += a0[j]  * bb;
+        }
+    }
+}
 
 
 
 template<class value_t, class size_t>
 void gemv_col_parallel(
-		value_t const*const __restrict a,
-		value_t const*const __restrict b,
-		value_t      *const __restrict c,
-		size_t const M,
-		size_t const N,
-		size_t const lda)
+        value_t const*const __restrict a,
+        value_t const*const __restrict b,
+        value_t      *const __restrict c,
+        size_t const M,
+        size_t const N,
+        size_t const lda)
 {
-	constexpr auto MB = 32;
-	const unsigned m = M/MB;
-	const unsigned MBmod = M%MB;
+    constexpr auto MB = 32;
+    const unsigned m = M/MB;
+    const unsigned MBmod = M%MB;
 
-	#pragma omp parallel  firstprivate(a,b,c, MB, m, MBmod, N, lda, M)
-	{
-		#pragma omp for schedule(dynamic)
-		for(unsigned k = 0; k < m; ++k){
-			auto const*const __restrict ak = a+k*MB;
-			auto      *const __restrict ck = c+k*MB;
+    #pragma omp parallel  firstprivate(a,b,c, MB, m, MBmod, N, lda, M)
+    {
+        #pragma omp for schedule(dynamic)
+        for(unsigned k = 0; k < m; ++k){
+            auto const*const __restrict ak = a+k*MB;
+            auto      *const __restrict ck = c+k*MB;
 
-			for(unsigned i = 0; i < N; ++i){
-				auto const*const __restrict ai = ak+i*lda;
-				auto      *const __restrict ci = ck;
-				const auto bb = b[i];
+            for(unsigned i = 0; i < N; ++i){
+                auto const*const __restrict ai = ak+i*lda;
+                auto      *const __restrict ci = ck;
+                const auto bb = b[i];
 
-				#pragma omp simd safelen(MB)
-				// aligned (ci,ai : 32)
-				for(unsigned j = 0; j < MB; ++j){
-					ci[j] += ai[j]  * bb;
-				}
-			}
-		}
+                #pragma omp simd safelen(MB)
+                // aligned (ci,ai : 32)
+                for(unsigned j = 0; j < MB; ++j){
+                    ci[j] += ai[j]  * bb;
+                }
+            }
+        }
 
-		#pragma omp single
-		for(unsigned i = 0; i < N; ++i){
-			auto const*const __restrict ai = a+i*lda+m*MB;
-			auto      *const __restrict ci = c+m*MB;
-			const auto bb = b[i];
+        #pragma omp single
+        for(unsigned i = 0; i < N; ++i){
+            auto const*const __restrict ai = a+i*lda+m*MB;
+            auto      *const __restrict ci = c+m*MB;
+            const auto bb = b[i];
 
-			#pragma omp simd // aligned (ci,ai : 32)
-			for(unsigned j = 0; j < MBmod; ++j){
-				ci[j] += ai[j]  * bb;
-			}
-		}
+            #pragma omp simd // aligned (ci,ai : 32)
+            for(unsigned j = 0; j < MBmod; ++j){
+                ci[j] += ai[j]  * bb;
+            }
+        }
 
-	}
+    }
 }
 
 
@@ -300,13 +300,13 @@ inline void mtv(
 {
 	auto n = compute_nfull(na,p) / na[m-1];
 	
-	     if(is_case<1>(p,m,pia)) dot     (a,b,c,na[0]);
-	else if(is_case<2>(p,m,pia)) gemv_row(a,b,c,na[1],na[0],na[0] ); // first-order (column-major)
-	else if(is_case<3>(p,m,pia)) gemv_col(a,b,c,na[0],na[1],na[0] ); // first-order (column-major)
-	else if(is_case<4>(p,m,pia)) gemv_col(a,b,c,na[1],na[0],na[1] ); // last-order  (row-major)
-	else if(is_case<5>(p,m,pia)) gemv_row(a,b,c,na[0],na[1],na[1] ); // last-order  (row-major)
-	else if(is_case<6>(p,m,pia)) gemv_row(a,b,c,n,na[m-1],na[m-1]);
-	else if(is_case<7>(p,m,pia)) gemv_col(a,b,c,n,na[m-1],n);
+         if(is_case<1>(p,m,pia)) dot<value_t,size_t>     (a,b,c,na[0]);
+    else if(is_case<2>(p,m,pia)) gemv_row<value_t,size_t>(a,b,c,na[1],na[0],na[0] ); // first-order (column-major)
+    else if(is_case<3>(p,m,pia)) gemv_col<value_t,size_t>(a,b,c,na[0],na[1],na[0] ); // first-order (column-major)
+    else if(is_case<4>(p,m,pia)) gemv_col<value_t,size_t>(a,b,c,na[1],na[0],na[1] ); // last-order  (row-major)
+    else if(is_case<5>(p,m,pia)) gemv_row<value_t,size_t>(a,b,c,na[0],na[1],na[1] ); // last-order  (row-major)
+    else if(is_case<6>(p,m,pia)) gemv_row<value_t,size_t>(a,b,c,n,na[m-1],na[m-1]);
+    else if(is_case<7>(p,m,pia)) gemv_col<value_t,size_t>(a,b,c,n,na[m-1],n);
 
 }
 

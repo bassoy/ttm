@@ -15,8 +15,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef TLIB_DETAIL_TTV_H
-#define TLIB_DETAIL_TTV_H
+#pragma once
 
 #include <cstddef>
 #include <stdexcept>
@@ -44,7 +43,7 @@
 
 
 
-namespace tlib::detail{
+namespace tlib::ttv::detail{
 
 
 template<class size_t>
@@ -409,37 +408,37 @@ inline void ttv(
 		auto const na_m = na[m-1];
 		auto const wa_m = wa[m-1];
 
-		auto const pia_pair = divide_layout(pia, p, m);
+        auto const pia_pair = tlib::detail::divide_layout(pia, p, m);
 		auto const pia2 = pia_pair.second; // same for a and c
 		assert(pia_pair.first.size() == 2);
 		assert(pia2.size() > 0);
 
-		auto const wa_pair = divide(wa, pia, p, m);
+        auto const wa_pair = tlib::detail::divide(wa, pia, p, m);
 		auto const wa2 = wa_pair.second; // NOT same for a and c
 		assert(wa_pair.first.size() == 2);
 		assert(wa2.size() > 0);
 
-		auto const wc_pair = divide(wc, pic, p-1);
+        auto const wc_pair = tlib::detail::divide(wc, pic, p-1);
 		auto const wc2 = wc_pair.second; // NOT same for a and c
 		assert(wc_pair.first.size() == 1);
 		assert(wc2.size() > 0);
 
 		assert(wc2.size() == wa2.size());
 
-		auto const na_pair = divide(na, pia, p, m);
+        auto const na_pair = tlib::detail::divide(na, pia, p, m);
 		auto const na2 = na_pair.second; // same for a and c
 		assert(na2.size() > 0);
 		
 		auto const nn = std::accumulate(na2.begin(),na2.end(),1ul,std::multiplies<>());
 		//auto const nn = na2.product();
-		auto va2 = generate_strides(na2,pia2); // same for a and c
+        auto va2 = tlib::detail::generate_strides(na2,pia2); // same for a and c
 
 
 
 		#pragma omp parallel for schedule(dynamic) firstprivate(p, wc2, wa2,va2,pia2,  na_m,wa_m,na_pia_1, a,b,c)
 		for(size_t k = 0; k < nn; ++k){
-			auto ka = at_at_1(k, va2, wa2, pia2);
-			auto kc = at_at_1(k, va2, wc2, pia2);
+            auto ka = tlib::detail::at_at_1(k, va2, wa2, pia2);
+            auto kc = tlib::detail::at_at_1(k, va2, wc2, pia2);
 			auto const*const ap = a + ka;
 			auto      *const cp = c + kc;
 			gemv_col_blas( ap,b,cp, na_pia_1, na_m, wa_m  );
@@ -655,8 +654,5 @@ inline void ttv(
 	}
 }
 
-} // namespace tlib::detail
+} // namespace tlib::ttv::detail
 
-
-
-#endif // TLIB_DETAIL_TTV_H

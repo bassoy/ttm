@@ -50,8 +50,10 @@ struct cblas_tr   : public cblas_trans { static inline constexpr CBLAS_TRANSPOSE
 struct cblas_notr : public cblas_trans { static inline constexpr CBLAS_TRANSPOSE value = CblasNoTrans; };
 
 
+
+
 template<class layout_t, class transA_t, class transB_t>
-class MatrixTimesMatrix
+class gemm_blas
 {
 public:
     template<class value_t>
@@ -77,18 +79,18 @@ private:
 };
 
 
-using mtm_row_tr1 = MatrixTimesMatrix < cblas_row, cblas_tr,   cblas_notr >;
-using mtm_row_tr2 = MatrixTimesMatrix < cblas_row, cblas_notr, cblas_tr   >;
-using mtm_row     = MatrixTimesMatrix < cblas_row, cblas_notr, cblas_notr >;
+using gemm_row_tr1 = gemm_blas < cblas_row, cblas_tr,   cblas_notr >;
+using gemm_row_tr2 = gemm_blas < cblas_row, cblas_notr, cblas_tr   >;
+using gemm_row     = gemm_blas < cblas_row, cblas_notr, cblas_notr >;
 
-using mtm_col_tr1 = MatrixTimesMatrix < cblas_col, cblas_tr  , cblas_notr >;
-using mtm_col_tr2 = MatrixTimesMatrix < cblas_col, cblas_notr, cblas_tr   >;
-using mtm_col     = MatrixTimesMatrix < cblas_col, cblas_notr, cblas_notr >;
+using gemm_col_tr1 = gemm_blas < cblas_col, cblas_tr  , cblas_notr >;
+using gemm_col_tr2 = gemm_blas < cblas_col, cblas_notr, cblas_tr   >;
+using gemm_col     = gemm_blas < cblas_col, cblas_notr, cblas_notr >;
 
 
 
 template<class layout_t>
-class MatrixTimesVector
+class gemv_blas
 {
 private:
     static constexpr inline auto layout = layout_t::value;
@@ -97,8 +99,8 @@ public:
     template<class value_t>
     static inline void run(value_t *const A, value_t *const x, value_t * y, std::size_t m, std::size_t n, std::size_t lda)
     {
-				// CblasColMajor CblasNoTrans      m         n     alpha  a   lda   x  incx  beta  y   incy    
-				auto noTrA = cblas_notr::value;
+        // CblasColMajor CblasNoTrans      m         n     alpha  a   lda   x  incx  beta  y   incy
+        auto noTrA = cblas_notr::value;
         auto alpha = value_t(1.0);
         auto beta  = value_t(0.0);
         auto incx  = 1;
@@ -110,8 +112,8 @@ public:
     }
 };
 
-using mtv_row = MatrixTimesVector <cblas_row>;
-using mtv_col = MatrixTimesVector <cblas_col>;
+using gemv_row = gemv_blas <cblas_row>;
+using gemv_col = gemv_blas <cblas_col>;
 
 
 inline std::size_t num_elements(std::size_t const*const na, unsigned p)
@@ -163,16 +165,16 @@ inline void mtm_rm(
   auto nn  = num_elements(na,p) / nq;
  
 	                                               // A,x,y, m, n, lda
-	     if(is_case_rm<1>(p,q,pia)) mtv_row::run     (b,a,c, u, m, m  );            // q=1 | A(u,1),C(m,1), B(m,u) = RM       | C = A x1 B => c = B *(rm) a
+         if(is_case_rm<1>(p,q,pia)) gemv_row::run     (b,a,c, u, m, m  );            // q=1 | A(u,1),C(m,1), B(m,u) = RM       | C = A x1 B => c = B *(rm) a
                                                  // a,b,c  m, n, k,   lda,ldb,ldc    	     
-	else if(is_case_rm<2>(p,q,pia)) mtm_row_tr2::run (a,b,c, n, u, m,   m, m, u );  // q=1     | A(m,n),C(u,n) = CM , B(u,m) = RM | C = A x1 B => C = A *(rm) B'
-	else if(is_case_rm<3>(p,q,pia)) mtm_row::run     (b,a,c, u, m, n,   n, m, m );  // q=2     | A(m,n),C(m,u) = CM , B(u,n) = RM | C = A x2 B => C = B *(rm) A
+    else if(is_case_rm<2>(p,q,pia)) gemm_row_tr2::run (a,b,c, n, u, m,   m, m, u );  // q=1     | A(m,n),C(u,n) = CM , B(u,m) = RM | C = A x1 B => C = A *(rm) B'
+    else if(is_case_rm<3>(p,q,pia)) gemm_row::run     (b,a,c, u, m, n,   n, m, m );  // q=2     | A(m,n),C(m,u) = CM , B(u,n) = RM | C = A x2 B => C = B *(rm) A
 	
-	else if(is_case_rm<4>(p,q,pia)) mtm_row::run     (b,a,c, u, n, m,   m, n, n );  // q=1     | A(m,n),C(u,n) = RM , B(u,m) = RM | C = A x1 B => C = B *(rm) A
-	else if(is_case_rm<5>(p,q,pia)) mtm_row_tr2::run (a,b,c, m, u, n,   n, n, u );  // q=2     | A(m,n),C(m,u) = RM , B(u,n) = RM | C = A x2 B => C = A *(rm) B'
+    else if(is_case_rm<4>(p,q,pia)) gemm_row::run     (b,a,c, u, n, m,   m, n, n );  // q=1     | A(m,n),C(u,n) = RM , B(u,m) = RM | C = A x1 B => C = B *(rm) A
+    else if(is_case_rm<5>(p,q,pia)) gemm_row_tr2::run (a,b,c, m, u, n,   n, n, u );  // q=2     | A(m,n),C(m,u) = RM , B(u,n) = RM | C = A x2 B => C = A *(rm) B'
 	
-	else if(is_case_rm<6>(p,q,pia)) mtm_row_tr2::run (a,b,c, nn,u,nq,   nq,nq, u);  // q=pi(1) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
-	else if(is_case_rm<7>(p,q,pia)) mtm_row::run     (b,a,c, u,nn,nq,   nq,nn,nn);  // q=pi(p) | A(nq,nn),C(u,nn)   , B(u,nq) = RM | C = A xq B => C = B *(rm) A
+    else if(is_case_rm<6>(p,q,pia)) gemm_row_tr2::run (a,b,c, nn,u,nq,   nq,nq, u);  // q=pi(1) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
+    else if(is_case_rm<7>(p,q,pia)) gemm_row::run     (b,a,c, u,nn,nq,   nq,nn,nn);  // q=pi(p) | A(nq,nn),C(u,nn)   , B(u,nq) = RM | C = A xq B => C = B *(rm) A
 	
 }  
 

@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include "detail/tensor_times_matrix.h"
 #include "detail/tensor_times_vector.h"
 #include "detail/tensor.h"
 #include "detail/tags.h"
@@ -89,7 +88,7 @@ inline void tensor_times_vector(
 	if(!detail::is_valid_strides(pia,pia+p,   wa)) throw std::runtime_error("Error in tlib::tensor_times_vector: stride vector of A is not valid.");
 	if(!detail::is_valid_strides(pic,pic+p-1, wc)) throw std::runtime_error("Error in tlib::tensor_times_vector: stride vector of C is not valid.");
 
-	detail::ttv(ep,sp,fp,  q,p, a,na,wa,pia, b,nb, c,nc,wc,pic);
+    ttv::detail::ttv(ep,sp,fp,  q,p, a,na,wa,pia, b,nb, c,nc,wc,pic);
 }
 
 

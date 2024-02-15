@@ -20,7 +20,7 @@
 
 #include <stdexcept>
 
-namespace tlib::detail{
+namespace tlib::ttv::detail{
 
 template<unsigned __case, typename size_t>
 inline constexpr bool is_case(size_t p, size_t m, size_t const*const pi)
