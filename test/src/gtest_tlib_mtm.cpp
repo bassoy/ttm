@@ -25,204 +25,6 @@
 #include "gtest_aux.h"
 
 
-
-template<class value_type = double>
-class matrix
-{
-public:
-    using size_type = std::size_t;
-    using container_type = std::vector<value_type>;
-    using shape_type = std::vector<size_type>;
-    using layout_type = std::vector<unsigned>;
-
-    matrix() = delete;
-    matrix(shape_type n, value_type v = 0.0, layout_type pi = {1,2})
-        : container_(elements_(n),v)
-        , n_(n)
-        , pi_(pi)
-        , w_(strides_(n,pi))
-    {
-    }
-    
-    matrix(matrix const& other) : container_(other.container_), n_(other.n_), pi_(other.pi_), w_(other.w_) {}
-
-    virtual ~matrix() = default;
-
-    inline const value_type* data() const { return this->container_.data(); }
-    inline value_type* data() { return this->container_.data(); }
-    inline container_type const&  container() const { return this->container_; }
-    inline container_type &  container() { return this->container_; }
-    inline shape_type n()    const { return this->n_; }
-    inline shape_type w()    const { return w_; }
-    inline layout_type pi()   const { return pi_; }
-    inline unsigned  p()    const { return n_.size(); }
-
-    void set(layout_type pi)
-    {
-        pi_ = pi;
-        w_ = strides_(n_,pi_);
-    }
-
-    inline bool is_cm()  const { return pi_[0] == 1; }
-
-
-    inline value_type      & operator()(size_type i, size_type j)       { return container_[at_(i,j)]; }
-    inline value_type const& operator()(size_type i, size_type j) const { return container_[at_(i,j)]; }
-
-    inline value_type      & operator[](size_type j)       { return container_[j]; }
-    inline value_type const& operator[](size_type j) const { return container_[j]; }
-
-
-protected:
-    container_type container_;
-    shape_type n_;
-    layout_type pi_;
-    shape_type w_;
-
-
-    inline auto at_(size_type i, size_type j) const{
-        return i*w_[0] + j*w_[1];
-    }
-
-    static inline auto elements_(shape_type n){
-        return std::accumulate(n.begin(), n.end(), 1ull, std::multiplies<size_type>());
-    }
-
-    static inline auto strides_(shape_type n, layout_type pi){
-        unsigned p = n.size();
-        auto w = shape_type(p,1);
-        for(auto r = 1u; r < p; ++r)
-            w[pi[r]-1] = w[pi[r-1]-1] * n[pi[r-1]-1];
-
-        return w;
-    }
-};
-
-template<class value_type = double>
-class cube : public matrix<value_type>
-{
-    using super_type = matrix<value_type>;
-
-    using size_type      = typename super_type::size_type;
-    using container_type = typename super_type::container_type;
-    using shape_type     = typename super_type::shape_type;
-    using layout_type    = typename super_type::layout_type;
-
-public:
-    cube() = delete;
-    cube(shape_type n, value_type v = 0.0, layout_type pi = {1,2,3})
-        : super_type(n,v,pi)
-    {
-        assert(n.size() == 3u);
-        assert(pi.size() == 3u);
-    }
-    
-    cube(cube const& other) : super_type(other.super_type) {}
-
-    virtual ~cube() = default;
-
-    inline value_type      & operator()(size_type i, size_type j, size_type k)       { return this->container_[at_(i,j,k)]; }
-    inline value_type const& operator()(size_type i, size_type j, size_type k) const { return this->container_[at_(i,j,k)]; }
-
-    inline value_type      & operator[](size_type j)       { return this->container_[j]; }
-    inline value_type const& operator[](size_type j) const { return this->container_[j]; }
-
-protected:
-    inline auto at_(size_type i, size_type j, size_type k) const{
-        return i*this->w_[0] + j*this->w_[1] +  k * this->w_[2];
-    }
-
-};
-
-template<class value_type>
-void init( matrix<value_type>& a, unsigned q )
-{
-
-    auto m = a.n()[0];
-    auto n = a.n()[1];
-
-    assert(q == 1 || q == 2);
-    
-    if (q == 2){
-        for(auto j = 0ul; j < n; ++j)
-            for(auto i = 0ul; i < m; ++i)
-                a(i,j) = j+1 + i*n;
-    }
-    else{
-        for(auto i = 0ul; i < m; ++i)
-            for(auto j = 0ul; j < n; ++j)
-                a(i,j) = i+1 + j*m;
-    }
-}
-
-template<class value_type>
-void init( cube<value_type>& a, unsigned q )
-{
-
-    auto M = a.n()[0];
-    auto N = a.n()[1];
-    auto K = a.n()[2];
-
-    assert(q == 1 || q == 2 || q == 3);
-
-    auto element = [q,M,N,K](auto i, auto j, auto k)
-    {
-        if(q == 1u) return i+1 + j*M + k*M*N;
-        else if(q == 2u) return j+1 + i*N + k*M*N;
-        else if(q == 3u) return k+1 + j*M + i*N*K;
-
-        return 0ull;
-    };
-
-    for(auto k = 0ull; k < K; ++k)
-        for(auto j = 0ull; j < N; ++j)
-            for(auto i = 0ull; i < M; ++i)
-                a(i,j,k) = element(i,j,k);
-}
-
-
-template<class value_type>
-std::ostream& operator<< (std::ostream& out, matrix<value_type> const& a)
-{
-
-    auto m = a.n()[0];
-    auto n = a.n()[1];
-
-    out << "[ ... " << std::endl;
-    for(auto i = 0ul; i < m; ++i){
-        for(auto j = 0ul; j < n; ++j){
-            out << a(i,j) << ", ";
-        }
-        out << "..." << std::endl;
-    }
-    out << "];" << std::endl;
-    return out;
-}
-
-
-template<class value_type>
-std::ostream& operator<< (std::ostream& out, cube<value_type> const& a)
-{
-
-    auto M = a.n()[0];
-    auto N = a.n()[1];
-    auto K = a.n()[2];
-
-    out << "cat(3,..." << std::endl;
-    for(auto k = 0ull; k < K; ++k){
-        out << "[ ... " << std::endl;
-        for(auto i = 0ull; i < M; ++i){
-            for(auto j = 0ull; j < N; ++j){
-                out << a(i,j,k) << ", ";
-            }
-            out << "..." << std::endl;
-        }
-        out << "],..." << std::endl;
-    }
-    out << ");" << std::endl;
-    return out;
-}
-
 template<class matrix_type>
 [[nodiscard]] matrix_type mtm(matrix_type  const& a, matrix_type  const& b)
 {
@@ -232,7 +34,7 @@ template<class matrix_type>
     auto N = b.n()[1];
     assert(K == b.n()[0]);
 
-    auto c = matrix_type ({M,N});
+    auto c = matrix_type ({M,N},0.0,a.pi());
     auto cmajor = a.is_cm();
 
 
@@ -275,7 +77,7 @@ template<class matrix_type>
 {
     auto M = a.n()[0];
     auto N = a.n()[1];
-    auto c = matrix_type ({M,1});
+    auto c = matrix_type ({M,1},0.0,a.pi());
     auto cmajor = a.is_cm();
     assert(b.n()[0] == N && b.n()[1] == 1);
 
@@ -313,7 +115,7 @@ template<class matrix_type>
 {
     auto M = a.n()[0];
     auto N = a.n()[1];
-    auto c = matrix_type ({1,N});
+    auto c = matrix_type ({1,N},0.0,a.pi());
     auto cmajor = a.is_cm();
 
     assert(b.n()[0] == 1 && b.n()[1] == M);
@@ -353,8 +155,9 @@ template<class matrix_type>
  * \param i row number for q=1 and col number for q=2
  * \param q contraction mode
 */
-template<class value_t>
-value_t refc(matrix<value_t> const& a, std::size_t i, std::size_t q)
+template<class matrix_type>
+inline typename matrix_type::value_type
+refc(matrix_type const& a, std::size_t i, std::size_t q)
 {
     auto M = a.n().at(0);
     auto N = a.n().at(1);
@@ -371,12 +174,14 @@ value_t refc(matrix<value_t> const& a, std::size_t i, std::size_t q)
 /* \brief creates a reference value
  *
  *
- * \param a input matrix
- * \param i row number for q=1 and col number for q=2
+ * \param a input cube
+ * \param i index 1 (not q)
+ * \param j index 2 (not q)
  * \param q contraction mode
 */
-template<class value_t>
-value_t refc(cube<value_t> const& a, std::size_t i, std::size_t j, std::size_t q)
+template<class cube_type>
+inline typename cube_type::value_type
+refc(cube_type const& a, std::size_t i, std::size_t j, std::size_t q)
 {
     auto M = a.n().at(0);
     auto N = a.n().at(1);
@@ -392,6 +197,67 @@ value_t refc(cube<value_t> const& a, std::size_t i, std::size_t j, std::size_t q
 };
 
 
+/* \brief creates a reference value
+ *
+ *
+ * \param a input cube
+ * \param j relative memory index except iq*wq
+ * \param q contraction mode
+*/
+template<class value_type>
+inline value_type refc_general(std::vector<value_type> const& a, std::size_t j, std::size_t jq) // unsigned q
+{
+    static auto sum = [](auto n) { return (n*(n+1))/2u; };
+
+    // j = i(1)*w(1) + ... + i(q-1)*w(q-1) + i(q+1)*w(q+1) + ... + i(p)*w(p)
+
+    return sum(a[jq]) - sum(a[j]-1.0);
+};
+
+
+template<class value_type, class size_type>
+inline void
+ttm_check(
+        const unsigned r,    // 1<=r<=p, initially p
+        const unsigned q,    // 1<=q<=p
+        const unsigned qhat, // 1<=qh<=p
+        std::size_t ja,      // initially 0
+        std::size_t jc,      // initially 0
+        std::vector<value_type> const& a,
+        std::vector<size_type> const& na,
+        std::vector<size_type> const& wa,
+        std::vector<size_type> const& pia,
+        std::vector<value_type> const& c,
+        std::vector<size_type> const& nc,
+        std::vector<size_type> const& wc,
+        std::vector<size_type> const& pic)
+{
+
+
+    if(r>0){
+        if(r == qhat){
+            ttm_check(r-1,q,qhat, ja,jc, a,na,wa,pia, c,nc,wc, pic);
+        }
+        else{
+            auto piar = pia[r-1]-1;
+            auto picr = pic[r-1]-1;
+            for(auto i = 0ul; i < nc[picr]; ++i, ja+=wa[piar], jc+=wc[picr])
+                ttm_check(r-1,q,qhat, ja,jc, a,na,wa,pia, c,nc,wc,pic);
+        }
+    }
+    else{
+        auto q1 = q-1;
+        auto jq = ja + (na[q1]-1)*wa[q1];
+        auto ref = refc_general(a,ja,jq);
+        for(auto i = 0ul; i < nc[q1]; ++i, jc+=wc[q1]){
+            EXPECT_FLOAT_EQ(c[jc],ref);
+
+        }
+    }
+}
+
+
+
 
 
 
@@ -399,14 +265,15 @@ value_t refc(cube<value_t> const& a, std::size_t i, std::size_t j, std::size_t q
 
 TEST(MatrixTimesVector, Ref)
 {
-    using indices = std::vector<std::size_t>;
-    using permuration = std::vector<unsigned>;
+    using matrix      = tlib::gtest::matrix<double>;
+    using indices     = typename matrix::shape_type;
+    using permutation = typename matrix::layout_type;
 
     auto start = indices(2u,2u);
     auto steps = indices(2u,5u);
 
     auto shapes   = tlib::gtest::generate_shapes<std::size_t,2u>(start,steps);
-    auto formats  = std::array<permuration,2>{permuration{1,2}, permuration{2,1} };
+    auto formats  = std::array<permutation,2>{permutation{1,2}, permutation{2,1} };
 
     for(auto const& n : shapes)
     {
@@ -421,17 +288,14 @@ TEST(MatrixTimesVector, Ref)
                 auto a = matrix({M,N}, 0.0, f);
                 auto b = matrix({N,1}, 1.0, f);
 
-                init(a,q);
+
+                tlib::gtest::init(a,q);
 
                 auto c = mtv(a,b);
 
-                // std::cout << "q = " << q << std::endl;
-                // std::cout << "a = " << a << std::endl;
-                // std::cout << "b = " << b << std::endl;
-                // std::cout << "c = " << c << std::endl;
+                auto qh = tlib::detail::compute_qhat(a.pi().data(),a.p(),q);
+                ttm_check(a.p(),q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
-                for(auto i = 0ul; i < M; ++i)
-                    EXPECT_FLOAT_EQ(c[i], refc(a,i,q) );
             }
 
             {
@@ -440,12 +304,13 @@ TEST(MatrixTimesVector, Ref)
                 auto a = matrix({M,N}, 0.0, f);
                 auto b = matrix({1,M}, 1.0, f);
 
-                init(a,q);
+                tlib::gtest::init(a,q);
 
                 auto c = vtm(a,b);
 
-                for(auto j = 0ul; j < N; ++j)
-                    EXPECT_FLOAT_EQ(c[j], refc(a,j,q) );
+                auto qh = tlib::detail::compute_qhat(a.pi().data(),a.p(),q);
+                ttm_check(a.p(),q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
+
             }
 
         }
@@ -456,14 +321,17 @@ TEST(MatrixTimesVector, Ref)
 
 TEST(MatrixTimesMatrix, Ref)
 {
-    using indices = std::vector<std::size_t>;
-    using permuration = std::vector<unsigned>;
+    using matrix      = tlib::gtest::matrix<double>;
+    using indices     = typename matrix::shape_type;
+    using permutation = typename matrix::layout_type;
 
     auto start = indices(2u,2u);
-    auto steps = indices(2u,5u);
+    auto steps = indices(2u,1u);
 
     auto shapes  = tlib::gtest::generate_shapes<std::size_t,2u>(start,steps);
-    auto formats = std::array<permuration,2>{permuration{1,2}, permuration{2,1} };
+    auto formats = std::array<permutation,2>{permutation{1,2}, permutation{2,1} };
+
+    auto p = 2u;
 
     for(auto const& n : shapes)
     {
@@ -478,20 +346,14 @@ TEST(MatrixTimesMatrix, Ref)
             auto a = matrix({M,K}, 0.0, f);
             auto b = matrix({K,N}, 1.0, f);
 
+
             init(a,q);
 
             auto c = mtm(a,b);
 
-            // std::cout << "q = " << q << std::endl;
-            // std::cout << "a = " << a << std::endl;
-            // std::cout << "b = " << b << std::endl;
-            // std::cout << "c = " << c << std::endl;
+            auto qh = tlib::detail::compute_qhat(f.data(),p,q);
+            ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
-            for(auto i = 0u; i < M; ++i){
-                for(auto j = 0u; j < N; ++j){
-                    EXPECT_FLOAT_EQ(c(i,j), refc(a,i,q) );
-                }
-            }
         }
     }
 }
@@ -499,15 +361,16 @@ TEST(MatrixTimesMatrix, Ref)
 // q=1 | A(n,1),C(m,1), B(m,n) = RM       | C = A x1 B => c = B *(rm) a
 TEST(MatrixTimesMatrix, Case1)
 {
-    using indices = std::vector<std::size_t>;
-    using permuration = std::vector<unsigned>;
+    using matrix      = tlib::gtest::matrix<double>;
+    using indices     = typename matrix::shape_type;
+    using permutation = typename matrix::layout_type;
 
     auto start = indices(2u,2u);
-    auto steps = indices(2u,1u);
+    auto steps = indices(2u,4u);
 
     auto shapes = tlib::gtest::generate_shapes<std::size_t,2u>(start,steps);
-    auto cm = permuration{1,2};
-    auto rm = permuration{2,1};
+    auto cm = permutation{1,2};
+    auto rm = permutation{2,1};
 
     auto q = 1ul;
     auto p = 1ul;
@@ -527,7 +390,7 @@ TEST(MatrixTimesMatrix, Case1)
         const auto nc = c.n();
         const auto pia = a.pi();
 
-        init(b,2u);
+        tlib::gtest::init(b,2u);
 
 
         tlib::detail::mtm_rm(
@@ -538,6 +401,7 @@ TEST(MatrixTimesMatrix, Case1)
 
         for(auto i = 0ul; i < m; ++i)
             EXPECT_FLOAT_EQ(c[i], refc(b,i,2u) );
+
     }
 }
 
@@ -545,8 +409,9 @@ TEST(MatrixTimesMatrix, Case1)
 // q=1 | A(m,n),C(u,n) = CM | B(u,m) = RM | C = A x1 B => C = A *(rm) B' 
 TEST(MatrixTimesMatrix, Case2)
 {
-    using indices     = std::vector<std::size_t>;
-    using permutation = std::vector<unsigned>;
+    using matrix      = tlib::gtest::matrix<double>;
+    using indices     = typename matrix::shape_type;
+    using permutation = typename matrix::layout_type;
 
     auto start = indices(2u,2u);
     auto steps = indices(2u,5u);
@@ -577,8 +442,7 @@ TEST(MatrixTimesMatrix, Case2)
         const auto nc = c.n();
         const auto pia = a.pi();
         
-        init(a,q);
-
+        tlib::gtest::init(a,q);
 
         tlib::detail::mtm_rm(
                     q,p,
@@ -586,17 +450,9 @@ TEST(MatrixTimesMatrix, Case2)
                     b.data(), nb.data(),
                     c.data(), nc.data());
 
-        // mtm(a,b)
+        auto qh = tlib::detail::compute_qhat(pia.data(),p,q);
+        ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
-        // std::cout << "a = " << a << std::endl;
-        // std::cout << "b = " << b << std::endl;
-        // std::cout << "c = " << c << std::endl;
-
-        for(auto i = 0u; i < u; ++i){
-            for(auto j = 0u; j < n; ++j){
-                EXPECT_FLOAT_EQ(c(i,j), refc(a,j,1u) );
-            }
-        }
     }
 }
 
@@ -604,8 +460,9 @@ TEST(MatrixTimesMatrix, Case2)
 // q=2 | A(m,n),C(m,u) = CM | B(u,n) = RM | C = A x2 B => C = B *(rm) A
 TEST(MatrixTimesMatrix, Case3)
 {
-    using indices     = std::vector<std::size_t>;
-    using permutation = std::vector<unsigned>;
+    using matrix      = tlib::gtest::matrix<double>;
+    using indices     = typename matrix::shape_type;
+    using permutation = typename matrix::layout_type;
 
     auto start = indices(2u,2u);
     auto steps = indices(2u,5u);
@@ -636,7 +493,7 @@ TEST(MatrixTimesMatrix, Case3)
         const auto nc = c.n();
         const auto pia = a.pi();
         
-        init(b,q);
+        tlib::gtest::init(a,q);
 
         tlib::detail::mtm_rm(
                     q,p,
@@ -644,17 +501,8 @@ TEST(MatrixTimesMatrix, Case3)
                     b.data(), nb.data(),
                     c.data(), nc.data());
 
-        // mtm(a,b)
-
-        // std::cout << "a = " << a << std::endl;
-        // std::cout << "b = " << b << std::endl;
-        // std::cout << "c = " << c << std::endl;
-
-        for(auto i = 0u; i < m; ++i){
-            for(auto j = 0u; j < u; ++j){
-                EXPECT_FLOAT_EQ(c(i,j), refc(b,j,q) );
-            }
-        }
+        auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+        ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
     }
 }
 
@@ -663,11 +511,12 @@ TEST(MatrixTimesMatrix, Case3)
 // q=1 | A(m,n),C(u,n) = RM | B(u,m) = RM | C = A x1 B => C = B *(rm) A
 TEST(MatrixTimesMatrix, Case4)
 {
-    using indices     = std::vector<std::size_t>;
-    using permutation = std::vector<unsigned>;
+    using matrix      = tlib::gtest::matrix<double>;
+    using indices     = typename matrix::shape_type;
+    using permutation = typename matrix::layout_type;
 
     auto start = indices(2u,2u);
-    auto steps = indices(2u,4u);
+    auto steps = indices(2u,5u);
 
     constexpr auto shape_size = 2u;
 
@@ -695,7 +544,7 @@ TEST(MatrixTimesMatrix, Case4)
         const auto nc = c.n();
         const auto pia = a.pi();
 
-        init(b,2);
+        tlib::gtest::init(a,q);
 
         tlib::detail::mtm_rm(
                     q,p,
@@ -703,18 +552,8 @@ TEST(MatrixTimesMatrix, Case4)
                     b.data(), nb.data(),
                     c.data(), nc.data());
 
-        // mtm(a,b)
-
-        // std::cout << "q = " << q << std::endl;
-        // std::cout << "a = " << a << std::endl;
-        // std::cout << "b = " << b << std::endl;
-        // std::cout << "c = " << c << std::endl;
-
-        for(auto i = 0u; i < u; ++i){
-            for(auto j = 0u; j < n; ++j){
-                EXPECT_FLOAT_EQ(c(i,j), refc(b,i,2) );
-            }
-        }
+        auto qh = tlib::detail::compute_qhat(rm.data(),p,q);
+        ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
     }
 }
 
@@ -722,8 +561,9 @@ TEST(MatrixTimesMatrix, Case4)
 // q=2 | A(m,n),C(m,u) = RM | B(u,n) = RM | C = A x2 B => C = A *(rm) B'
 TEST(MatrixTimesMatrix, Case5)
 {
-    using indices     = std::vector<std::size_t>;
-    using permutation = std::vector<unsigned>;
+    using matrix      = tlib::gtest::matrix<double>;
+    using indices     = typename matrix::shape_type;
+    using permutation = typename matrix::layout_type;
 
     auto start = indices(2u,2u);
     auto steps = indices(2u,5u);
@@ -754,7 +594,7 @@ TEST(MatrixTimesMatrix, Case5)
         const auto nc = c.n();
         const auto pia = a.pi();
 
-        init(a,q);
+        tlib::gtest::init(a,q);
 
         tlib::detail::mtm_rm(
                     q,p,
@@ -762,18 +602,9 @@ TEST(MatrixTimesMatrix, Case5)
                     b.data(), nb.data(),
                     c.data(), nc.data());
 
-        // mtm(a,b)
+        auto qh = tlib::detail::compute_qhat(rm.data(),p,q);
+        ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
-        // std::cout << "q = " << q << std::endl;
-        // std::cout << "a = " << a << std::endl;
-        // std::cout << "b = " << b << std::endl;
-        // std::cout << "c = " << c << std::endl;
-
-        for(auto i = 0u; i < m; ++i){
-            for(auto j = 0u; j < u; ++j){
-                EXPECT_FLOAT_EQ(c(i,j), refc(a,i,q) );
-            }
-        }
     }
 }
 
@@ -782,8 +613,10 @@ TEST(MatrixTimesMatrix, Case5)
 // q=pi(1) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
 TEST(MatrixTimesMatrix, Case6)
 {
-    using indices     = std::vector<std::size_t>;
-    using permutation = std::vector<unsigned>;
+    using matrix      = tlib::gtest::matrix<double>;
+    using cube        = tlib::gtest::cube<double>;
+    using indices     = typename matrix::shape_type;
+    using permutation = typename matrix::layout_type;
 
     auto start = indices(3u,2u);
     auto steps = indices(3u,4u);
@@ -817,23 +650,12 @@ TEST(MatrixTimesMatrix, Case6)
 
             ASSERT_TRUE(tlib::detail::is_case_rm<6>(p,q,pia.data()));
 
-            init(a,q);
+            tlib::gtest::init(a,q);
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            //std::cout << "q = " << q << std::endl;
-            //std::cout << "a = " << a << std::endl;
-            //std::cout << "b = " << b << std::endl;
-            //std::cout << "c = " << c << std::endl;
-
-            for(auto k = 0u; k < K; ++k){
-                for(auto j = 0u; j < N; ++j){
-                    for(auto i = 0u; i < U; ++i){
-                        EXPECT_FLOAT_EQ(c(i,j,k), refc(a,j,k,q) );
-                    }
-                }
-            }
-
+            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
     } // shapes
@@ -861,22 +683,12 @@ TEST(MatrixTimesMatrix, Case6)
 
             ASSERT_TRUE(tlib::detail::is_case_rm<6>(p,q,pia.data()));
 
-            init(a, q);
+            tlib::gtest::init(a, q);
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            //std::cout << "q = " << q << std::endl;
-            //std::cout << "a = " << a << std::endl;
-            //std::cout << "b = " << b << std::endl;
-            //std::cout << "c = " << c << std::endl;
-
-            for(auto k = 0u; k < K; ++k){
-                for(auto j = 0u; j < U; ++j){
-                    for(auto i = 0u; i < M; ++i){
-                        EXPECT_FLOAT_EQ(c(i,j,k), refc(a,i,k,q) );
-                    }
-                }
-            }
+            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
 
         }	// layouts
@@ -910,18 +722,8 @@ TEST(MatrixTimesMatrix, Case6)
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            //std::cout << "q = " << q << std::endl;
-            //std::cout << "a = " << a << std::endl;
-            //std::cout << "b = " << b << std::endl;
-            //std::cout << "c = " << c << std::endl;
-
-            for(auto k = 0u; k < U; ++k){
-                for(auto j = 0u; j < N; ++j){
-                    for(auto i = 0u; i < M; ++i){
-                        EXPECT_FLOAT_EQ(c(i,j,k), refc(a,i,j,q) );
-                    }
-                }
-            }
+            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
 
         }	// layouts
@@ -934,8 +736,10 @@ TEST(MatrixTimesMatrix, Case6)
 // q=pi(p) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
 TEST(MatrixTimesMatrix, Case7)
 {
-    using indices     = std::vector<std::size_t>;
-    using permutation = std::vector<unsigned>;
+    using cube        = tlib::gtest::cube<double>;
+    using matrix      = tlib::gtest::matrix<double>;
+    using indices     = typename matrix::shape_type;
+    using permutation = typename matrix::layout_type;
 
     auto start = indices(3u,2u);
     auto steps = indices(3u,4u);
@@ -969,23 +773,12 @@ TEST(MatrixTimesMatrix, Case7)
 
             ASSERT_TRUE(tlib::detail::is_case_rm<7>(p,q,pia.data()));
 
-            init(a,q);
+            tlib::gtest::init(a,q);
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            //std::cout << "q = " << q << std::endl;
-            //std::cout << "a = " << a << std::endl;
-            //std::cout << "b = " << b << std::endl;
-            //std::cout << "c = " << c << std::endl;
-
-            for(auto k = 0u; k < K; ++k){
-                for(auto j = 0u; j < N; ++j){
-                    for(auto i = 0u; i < U; ++i){
-                        EXPECT_FLOAT_EQ(c(i,j,k), refc(a,j,k,q) );
-                    }
-                }
-            }
-
+            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
     } // shapes
@@ -1013,22 +806,12 @@ TEST(MatrixTimesMatrix, Case7)
 
             ASSERT_TRUE(tlib::detail::is_case_rm<7>(p,q,pia.data()));
 
-            init(a, q);
+            tlib::gtest::init(a, q);
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            //std::cout << "q = " << q << std::endl;
-            //std::cout << "a = " << a << std::endl;
-            //std::cout << "b = " << b << std::endl;
-            //std::cout << "c = " << c << std::endl;
-
-            for(auto k = 0u; k < K; ++k){
-                for(auto j = 0u; j < U; ++j){
-                    for(auto i = 0u; i < M; ++i){
-                        EXPECT_FLOAT_EQ(c(i,j,k), refc(a,i,k,q) );
-                    }
-                }
-            }
+            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
 
         }	// layouts
@@ -1058,23 +841,12 @@ TEST(MatrixTimesMatrix, Case7)
 
             ASSERT_TRUE(tlib::detail::is_case_rm<7>(p,q,pia.data()));
 
-            init(a, q);
+            tlib::gtest::init(a, q);
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            //std::cout << "q = " << q << std::endl;
-            //std::cout << "a = " << a << std::endl;
-            //std::cout << "b = " << b << std::endl;
-            //std::cout << "c = " << c << std::endl;
-
-            for(auto k = 0u; k < U; ++k){
-                for(auto j = 0u; j < N; ++j){
-                    for(auto i = 0u; i < M; ++i){
-                        EXPECT_FLOAT_EQ(c(i,j,k), refc(a,i,j,q) );
-                    }
-                }
-            }
-
+            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
     } // shapes
@@ -1090,8 +862,10 @@ TEST(MatrixTimesMatrix, Case7)
 // q=pi(p) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
 TEST(MatrixTimesMatrix, Case8)
 {
-    using indices     = std::vector<std::size_t>;
-    using permutation = std::vector<unsigned>;
+    using cube        = tlib::gtest::cube<double>;
+    using matrix      = tlib::gtest::matrix<double>;
+    using indices     = typename matrix::shape_type;
+    using permutation = typename matrix::layout_type;
 
     auto start = indices(3u,2u);
     auto steps = indices(3u,1u);

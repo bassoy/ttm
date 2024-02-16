@@ -57,7 +57,7 @@ class gemm_blas
 {
 public:
     template<class value_t>
-    static inline void run(value_t *const A, value_t *const B, value_t * C,
+    static inline void run(const value_t* A, const value_t*B, value_t * C,
                            std::size_t const m,      std::size_t const n,      std::size_t const k, 
                            std::size_t const lda,    std::size_t const ldb,    std::size_t const ldc)
     {
@@ -97,7 +97,7 @@ private:
 
 public:
     template<class value_t>
-    static inline void run(value_t *const A, value_t *const x, value_t * y, std::size_t m, std::size_t n, std::size_t lda)
+    static inline void run(const value_t *A, const value_t *x, value_t* y, std::size_t m, std::size_t n, std::size_t lda)
     {
         // CblasColMajor CblasNoTrans      m         n     alpha  a   lda   x  incx  beta  y   incy
         auto noTrA = cblas_notr::value;
@@ -135,9 +135,9 @@ inline void mtm(
 template<class value_t>
 inline void mtm_rm(
 			unsigned const q, unsigned const p,
-			value_t *const a, std::size_t const*const na, unsigned const*const pia,
-			value_t *const b, std::size_t const*const nb, // is a row-major dense matrix
-			value_t * c     , std::size_t const*const nc )
+            const value_t *a, std::size_t const*const na, std::size_t const*const pia,
+            const value_t *b, std::size_t const*const nb, // is a row-major dense matrix
+                  value_t *c, std::size_t const*const nc )
 {
 
 	

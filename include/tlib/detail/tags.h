@@ -50,8 +50,51 @@ struct all_policy    {};
 inline constexpr none_policy    none;
 inline constexpr outer_policy   outer;
 inline constexpr all_policy     all;
+}
+
+
+
+// ttm
+
+namespace tlib::parallel_policy
+{
+struct threaded_gemm_t  {}; // multithreaded gemm
+struct omp_taskloop_t   {}; // omp_taskloops with single threaded gemm
+struct omp_forloop_t    {}; // omp_for with single threaded gemm
+struct batched_gemm_t   {}; // multithreaded batched gemm with collapsed loops
+
+inline constexpr threaded_gemm_t  threaded_gemm;
+inline constexpr omp_taskloop_t   omp_taskloop;
+inline constexpr omp_forloop_t    omp_forloop;
+inline constexpr batched_gemm_t   batched_gemm;
+}
+
+
+namespace tlib::slicing_policy
+{
+struct slice_t     {};
+struct subtensor_t {};
+
+inline constexpr slice_t     slice;
+inline constexpr subtensor_t subtensor;
 
 }
+
+
+namespace tlib::fusion_policy
+{
+struct none_t   {};
+struct outer_t  {};
+struct all_t    {};
+
+inline constexpr none_t    none;
+inline constexpr outer_t   outer;
+inline constexpr all_t     all;
+}
+
+
+
+
 
 
 

@@ -31,7 +31,7 @@
 #include "matrix_times_matrix.h"
 #include "workload_computation.h"
 #include "tags.h"
-#include "cases.h"
+#include "cases_ttm.h"
 #include "strides.h"
 #include "index.h"
 
@@ -60,32 +60,71 @@ inline void set_blas_threads(size_t num)
 #endif
 }
 
+
+/* @brief Computes \hat{q} = \pi^{-1}(q)
+ *
+ *
+ * \hat{q} = \pi^{-1}(q) <=> q = \pi_{\hat{q}}
+*/
 template<class size_t>
-inline size_t compute_inverse_pi_q(size_t const*const pi,  size_t const p, size_t const q)
+inline size_t compute_qhat(size_t const*const pi,  unsigned const p, unsigned const q)
 {
-    size_t k = 0;
+    unsigned k = 0;
     for(; k<p; ++k)
         if(pi[k] == q)
             break;
     assert(k != p);
-    auto const inv_pi_q = k+1; // pia^{-1}(m)
-    assert(pi[inv_pi_q-1]==q);
+    auto const qh = k+1; // pia^{-1}(m)
+    assert(pi[qh-1]==q);
 
-    return inv_pi_q;
+    return qh;
 }
 
 
 
+
+/* @brief Computes number of elements for the first pi_{1}...pi_{\hat{q}-1} modes
+ *
+ * \hat{q} = pi^{-1}(q)
+ *
+ * nn = prod_{k=1}^{\hat{q}-1} n_{\pi_{k}}
+*/
+
 template<class size_t>
-inline auto compute_ninvpia(size_t const*const na, size_t const*const pi, size_t inv_pi_q)
+inline auto product_qhat(size_t const*const n, size_t const*const pi, unsigned qh)
 {
-    assert(inv_pi_q>0);
+    assert(qh>0u);
+
 	size_t nn = 1;
-    for(size_t r = 0; r<(inv_pi_q-1); ++r){
-        nn *= na[pi[r]-1];
+    for(unsigned r = 0; r<(qh-1); ++r){
+        nn *= n[pi[r]-1];
     }
 
 	return nn;
+}
+
+
+/* @brief Computes number of elements between modes start and finish
+ *
+ *
+ * nn = n_{\pi_{start}} * n_{\pi_{start+1}} * ... * n_{\pi_{finish}}
+ *
+ * \param n dimension tuple
+ * \param pi layout tuple
+ * \param start starting mode (one-based)
+ * \param finish end mode (one-based)
+*/
+
+template<class size_t>
+inline auto product(size_t const*const n, size_t const*const pi, unsigned start, unsigned finish)
+{
+
+    size_t nn = 1;
+    for(unsigned r = start-1; r<(finish-1); ++r){
+        nn *= n[pi[r]-1];
+    }
+
+    return nn;
 }
 
 
@@ -98,71 +137,70 @@ inline auto compute_ninvpia(size_t const*const na, size_t const*const pi, size_t
 template<class value_t, class size_t, class gemm_t>
 inline void multiple_gemm_with_slices (
         gemm_t && gemm,
-		size_t const r, // starts with p
-//		size_t const q, // starts with p-1
-		size_t const na_pia_1,
-		size_t const na_m,
-		size_t const wa_m,
-        size_t const inv_pi_q, // one-based.
-        value_t const*const __restrict a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-		value_t const*const __restrict b,
-        value_t      *const __restrict c, size_t const*const nc, size_t const*const wc
+        unsigned const r, // starts with p
+        unsigned const q, // 1 <= q <= p
+        unsigned const qh, // 1 <= qh <= p with \hat{q} = pi^{-1}(q)
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b,
+              value_t *c, size_t const*const nc, size_t const*const wc
 		)
 {    
 	if(r>1){
-        if (inv_pi_q == r) { // m == pia[p]
-            //const auto qq = inv_pi_q == r ? q : q-1;
-            multiple_gemm_with_slices(gemm, r-1,na_pia_1,na_m,wa_m,inv_pi_q,   a,na,wa,pia,  b,  c,nc,wc);
+        if (r == qh) { // q == pia[r]
+            multiple_gemm_with_slices(gemm, r-1, q, qh,   a,na,wa,pia,  b,  c,nc,wc);
 		}
-        else{ //  inv_pi_q < r  --- m < pia[r]
+        else{ //  r>1 && r != qh
             auto pia_r = pia[r-1]-1;
             for(unsigned i = 0; i < na[pia_r]; ++i){ // , a+=wa[pia[r-1]-1], c+=wc[pic[q-1]-1]
-                multiple_gemm_with_slices(gemm, r-1,na_pia_1,na_m,wa_m,inv_pi_q,  a+i*wa[pia_r],na,wa,pia,  b,  c+i*wc[pia_r],nc,wc);
+                multiple_gemm_with_slices(gemm, r-1, q, qh,  a+i*wa[pia_r],na,wa,pia,  b,  c+i*wc[pia_r],nc,wc);
             }
 		}
 	}
 	else {
-        gemm( a,b,c, na_pia_1, na_m, wa_m  );
+        auto n1     = na[pia[0]-1];
+        auto m      = nc[q-1];
+        auto nq     = na[q-1];
+
+        gemm( b,a,c, m,n1,nq,  nq,n1,n1);
 	}
 }
 
 
 
-/* @brief Recursively executes gemv over large tensor slices
+/* @brief Recursively executes gemv with subtensors
  * 
- * @note is applied in tensor-times-vector which uses large tensor slices
- * @note gemv_t should be a general matrix-times-vector function for matrices of column-major format
- * @note pia_1[m]!=1 i.e. pia[1]!=m must hold!
+ * @note is applied in tensor-times-matrix with subtensors
+ * @note gemm_t should be a general matrix-times-matrix function for matrices of row-major format
+ * @note pia_1[q]!=1 i.e. pia[1]!=q must hold!
 */
 template<class value_t, class size_t, class gemm_t>
 inline void multiple_gemm_with_subtensors (
-        gemm_t && gemm, // should be gemv_col type
-		size_t const r, // starts with p-1
-//		size_t const q, // starts with p-1
-		size_t const nn, // number of column elements of the matrix
-        size_t const na_q, // number of row elements of the matrix
-        size_t const wa_q,
-        size_t const inv_pia_q, // one-based.
-		value_t const*const __restrict a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-		value_t const*const __restrict b,
-        value_t      *const __restrict c, size_t const*const nc, size_t const*const wc
+        gemm_t && gemm,
+        unsigned const r, // starts with p
+        unsigned const q,
+        unsigned const qh, // qhat one-based
+        unsigned const nnq, // prod_{k=1}^{qh-1} n_{pi_k}
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b,
+              value_t *c, size_t const*const nc, size_t const*const wc
 		)
 {
-	assert(nn > 1);
-    assert(inv_pia_q != 1);
-	if(r>0){
-        if (inv_pia_q >= r) {
-            multiple_gemm_with_subtensors  (gemm, r-1,nn,  na_q,wa_q,inv_pia_q,   a,na,wa,pia,  b,  c,nc,wc);
-		}
-        else if (inv_pia_q < r){
+    if(r>1){
+        if (r < qh) {
+            multiple_gemm_with_subtensors  (gemm, r-1, q,qh,nnq,   a,na,wa,pia,  b,  c,nc,wc);
+        }
+        else if (r > qh){
             auto pia_r = pia[r-1]-1u;
             for(size_t i = 0; i < na[pia_r]; ++i){
-                multiple_gemm_with_subtensors (gemm, r-1, nn,  na_q,wa_q,inv_pia_q,  a+i*wa[pia_r],na,wa,pia,  b,  c+i*wc[pia_r],nc,wc);
+                multiple_gemm_with_subtensors (gemm, r-1, q,qh,nnq,  a+i*wa[pia_r],na,wa,pia,  b,  c+i*wc[pia_r],nc,wc);
             }
-		}
-	}
-	else {
-        gemm(  a,b,c, nn, na_q, wa_q  );
+        }
+    }
+    else {
+        auto m      = nc[q-1];
+        auto nq     = na[q-1];
+
+        gemm( b,a,c, m,nnq,nq,  nq,nnq,nnq);
 	}
 }
 
@@ -170,25 +208,22 @@ inline void multiple_gemm_with_subtensors (
 
 
 /**
- * \brief Implements a tensor-times-matrix-multiplication
+ * \brief Implements a tensor-times-matrix multiplication
  *
- * Performs a slice-times-vector operation in the most inner recursion level with subtensors of A and C
  *
- * It is a more sophisticated 2d-slice-times-vector implementation.
  *
  * @tparam value_t          type of the elements, usually float or double
  * @tparam size_t size      type of the extents, strides and layout elements, usually std::size_t
- * @tparam slicing_policy   type of the slicing method, i.e. small or large
- * @tparam loop_fusion      type of the loop fusion method, i.e. fusing none, all outer or even all free fusible loops
- * @tparam parallelization  type of the loop parallelization method, i.e. sequential, parallel or parallel with blas.
+ * @tparam slicing_policy   type of the slicing method, e.g. slice or subtensor
+ * @tparam parallel_policy  type of the parallelization method, e.g. threaded_gemm, omp_taskloop, omp_forloop, batched_gemm
 */
-template<class value_t, class size_t, class execution_policy, class slicing_policy, class fusion_policy>
+template<class value_t, class size_t, class parallel_policy, class slicing_policy, class fusion_policy>
 inline void ttm(
-	execution_policy, slicing_policy, fusion_policy,
-	size_t const m, size_t const p,
-	value_t const*const a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-	value_t const*const b, size_t const*const nb,
-    value_t      *const c, size_t const*const nc, size_t const*const wc
+    parallel_policy, slicing_policy, fusion_policy,
+    unsigned const q, unsigned const p,
+    const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+    const value_t *b, size_t const*const nb,
+          value_t *c, size_t const*const nc, size_t const*const wc
 	);
 
 
@@ -199,270 +234,300 @@ inline void ttm(
 */
 template<class value_t, class size_t>
 inline void ttm(
-			execution::sequential_policy, slicing::small_policy, loop_fusion::none_policy,
-            size_t const q, size_t const p,
-			value_t const*const a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-			value_t const*const b, size_t const*const nb,
-            value_t      *const c, size_t const*const nc, size_t const*const wc
+            parallel_policy::threaded_gemm_t, slicing_policy::slice_t, fusion_policy::none_t,
+            unsigned const q, unsigned const p,
+            const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+            const value_t *b, size_t const*const nb,
+                  value_t *c, size_t const*const nc, size_t const*const wc
 			)
 {
-    if(!is_case<8>(p,q,pia)){
-         // mtm_rm(execution::seq, q, p,  a, na, wa, pia,  b, nb,  c, nc, wc);
+    set_blas_threads(std::thread::hardware_concurrency());
+
+    if(!is_case_rm<8>(p,q,pia)){
+        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
 	}
 	else {
-        auto const inv_pi_q = compute_inverse_pi_q( pia, p, q );
-		size_t const na_pia_1 = na[pia[0]-1];
+        auto const qh = compute_qhat( pia, p, q );
         auto gemm = tlib::detail::gemm_row::run<value_t>;
 
-        multiple_gemm_with_slices(
-           gemm, p, na_pia_1, na[q-1], wa[q-1], inv_pi_q, a, na, wa, pia, b,  c, nc, wc);
+        multiple_gemm_with_slices(gemm, p, q, qh,  a,na,wa,pia,   b,  c,nc,wc);
 	}
 }
 
 
-
-/*
- *
- *
-*/
 template<class value_t, class size_t>
 inline void ttm(
-			execution::parallel_policy, slicing::small_policy, loop_fusion::none_policy,		
-			size_t const m, size_t const p,
-			value_t const*const a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-			value_t const*const b, size_t const*const nb,
-            value_t      *const c, size_t const*const nc, size_t const*const wc
-			)
+            parallel_policy::threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::none_t,
+            unsigned const q, unsigned const p,
+            const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+            const value_t *b, size_t const*const nb,
+                  value_t *c, size_t const*const nc, size_t const*const wc
+            )
 {
-	if(!is_case<8>(p,m,pia)) {
-		set_blas_threads(std::thread::hardware_concurrency());
-        mtm(execution::par,m, p,  a, na, wa, pia,  b, nb,  c, nc, wc);
-	}
-	else {
-		assert(is_case<8>(p,m,pia));
-	
-        auto const inv_pi_q = compute_inverse_pi_q( pia, p, m );
-		size_t const na_pia_1 = na[pia[0]-1];
+    set_blas_threads(std::thread::hardware_concurrency());
 
-		set_blas_threads(1);
-
-		// m != pia[p]
-		size_t pia_p = pia[p-1];
-		assert(m > 0);
-		assert(p>2);
-        if(inv_pi_q == p) // m == pia[p]
-            pia_p = pia[p-2];
-
-		assert(pia[0]!=pia_p );
-		assert(pia[p-1]!=m );
-
-		const auto wa_pia_p = wa[pia_p-1];
-        const auto wc_pic_p = wc[pia_p-1];
-
+    if(!is_case_rm<8>(p,q,pia)){
+        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+    }
+    else {
+        auto const qh  = compute_qhat( pia, p, q );
+        auto const nnq = product(na, pia, 1, qh); //product_qhat(na, pia, qh);
         auto gemm = tlib::detail::gemm_row::run<value_t>;
 
-        #pragma omp parallel for schedule(dynamic) firstprivate(pia_p,p,m,   na_pia_1,inv_pi_q,   a,na,wa,pia,  b,c,nc,wc)
-		for(size_t i = 0; i < na[pia_p-1]; ++i)
-            multiple_gemm_with_slices(
-                gemm, p-1, p-2, na_pia_1, na[m-1], wa[m-1], inv_pi_q, a+i*wa_pia_p, na, wa, pia, b,  c+i*wc_pic_p, nc, wc);
-	}
+        multiple_gemm_with_subtensors(gemm, p, q, qh, nnq, a,na,wa,pia,   b,  c,nc,wc);
+    }
 }
 
 
 
-/*
- *
- *
-*/
-//template<class value_t>
-//struct TensorTimesVector<value_t,small_slices_tag,blas_tag,outer_tag>
 
+
+
+// only parallelize the outer dimensions
 template<class value_t, class size_t>
 inline void ttm(
-			execution::parallel_blas_policy, slicing::small_policy, loop_fusion::none_policy,	
-            size_t const q,
-			size_t const p,
-			value_t const*const a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-			value_t const*const b, size_t const*const nb,
-            value_t      *const c, size_t const*const nc, size_t const*const wc
-			)
+        parallel_policy::omp_forloop_t, slicing_policy::slice_t, fusion_policy::outer_t,
+        unsigned const q, unsigned const p,
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b, size_t const*const nb,
+              value_t *c, size_t const*const nc, size_t const*const wc
+        )
 {
 
-    if(!is_case<8>(p,q,pia)){
+    if(!is_case_rm<8>(p,q,pia)){
 		set_blas_threads(std::thread::hardware_concurrency());
-        // mtm(execution::blas, q, p,  a, na, wa, pia,  b, nb,  c, nc, wc);
+        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
 	}
 	else {
-        assert(is_case<8>(p,q,pia));
-		set_blas_threads(1);	
-		
-        auto const inv_pi_q = compute_inverse_pi_q( pia, p, q );
-		size_t const na_pia_1 = na[pia[0]-1];
-
-		// m != pia[p]
-		size_t pia_p = pia[p-1];
-        assert(q>0u);
-        assert(p>2u);
-
-        if(inv_pi_q == p) // m == pia[p]
-            pia_p = pia[p-2];
-
-		assert(pia[0]!=pia_p );
-        assert(inv_pi_q != p);
-
-		const auto wa_pia_p = wa[pia_p-1];
-        const auto wc_pic_p = wc[pia_p-1];
-
-        auto gemm = tlib::detail::gemm_row::run<value_t>;
-
-        #pragma omp parallel for schedule(dynamic) firstprivate(pia_p,p,q,   na_pia_1,inv_pi_q,   a,na,wa,pia,  b,c,nc,wc)
-		for(size_t i = 0; i < na[pia_p-1]; ++i)
-            multiple_gemm_with_slices(
-                gemm, p-1, na_pia_1, na[q-1], wa[q-1], inv_pi_q, a+i*wa_pia_p, na, wa, pia, b,  c+i*wc_pic_p, nc, wc);
-
-	}
-}
-
-
-
-// parallel execution with blas using all free outer dimensions
-//template<class value_t>
-//struct TensorTimesVector<value_t,small_slices_tag,parallel_blas_tag,all_outer_tag> // _parallel_blas_3
-
-template<class value_t, class size_t>
-inline void ttm(
-			execution::parallel_blas_policy, slicing::small_policy, loop_fusion::outer_policy,	
-            size_t const q,
-			size_t const p,
-			value_t const*const a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-			value_t const*const b, size_t const*const nb,
-            value_t      *const c, size_t const*const nc, size_t const*const wc
-			)
-{
-
-    if(!is_case<8>(p,q,pia)){
-		set_blas_threads(std::thread::hardware_concurrency());
-        // mtm(execution::blas, m, p,  a, na, wa, pia,  b, nb,  c, nc, wc, pic);
-	}
-	else {
-        assert(is_case<8>(p,q,pia));
+        assert(is_case_rm<8>(p,q,pia));
 		set_blas_threads(1);
 		
-        auto const inv_pi_q = compute_inverse_pi_q( pia, p, q );
+        auto const qh = compute_qhat( pia, p, q );
 
         assert(q>0);
 		assert(p>2);
 
 		assert(pia[0]!=pia[p-1] );
-        assert(inv_pi_q != p);
+        assert(qh != p);
         assert(q != pia[p-1]);
-        assert(p>inv_pi_q);
-        assert(inv_pi_q>0);
+        assert(p>qh);
+        assert(qh>0);
 
-		auto const na_pia_1 = na[pia[0]-1];
+        // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
+        auto const num = product(na, pia, qh+1,p);
 
-        auto const na_m = na[q-1];
-        auto const wa_m = wa[q-1];
+//		auto num = 1u;
+//        for(auto i = qh; i < p; ++i)
+//			num *= na[pia[i]-1];
 
-		auto num = 1u;
-        for(auto i = inv_pi_q; i < p; ++i)
-			num *= na[pia[i]-1];
-
-        auto const wa_m1 = wa[pia[inv_pi_q]-1];
-        auto const wc_m1 = wc[pia[inv_pi_q]-1];
+        auto const waq = wa[q-1];
+        auto const wcq = wc[q-1];
 
         auto gemm = tlib::detail::gemm_row::run<value_t>;
 
+        #pragma omp parallel for schedule(dynamic) firstprivate(p, q, qh, num, waq,wcq, a,b,c)
+        for(size_t k = 0u; k < num; ++k){
+            auto aa = a+k*waq;
+            auto cc = c+k*wcq;
 
-        #pragma omp parallel for schedule(dynamic) firstprivate(p, q, num, wa_m1,wc_m1,inv_pi_q,  na_m,wa_m,na_pia_1, a,b,c)
-		for(size_t k = 0u; k < num; ++k)
-            multiple_gemm_with_slices ( gemm, inv_pi_q-1, inv_pi_q-1, na_pia_1, na[q-1], wa[q-1], inv_pi_q,  a+k*wa_m1 ,na,wa,pia,  b,  c+k*wc_m1,nc,wc );
+
+            multiple_gemm_with_slices ( gemm, qh, q, qh,  aa,na,wa,pia,  b,  cc,nc,wc );
+        }
 	}
 }
 
 
-
-
-
-// parallel execution with blas using all free outer dimensions
-//template<class value_t>
-//struct TensorTimesVector<value_t,small_slices_tag,blas_tag,all_outer_inner_tag>// _parallel_blas_4
-
+// only parallelize the outer dimensions
 template<class value_t, class size_t>
 inline void ttm(
-			execution::parallel_blas_policy, slicing::small_policy, loop_fusion::all_policy,	
-			size_t const m,
-			size_t const p,
-			value_t const*const a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-			value_t const*const b, size_t const*const nb,
-            value_t      *const c, size_t const*const nc, size_t const*const wc
-			)
+        parallel_policy::omp_forloop_t, slicing_policy::slice_t, fusion_policy::all_t,
+        unsigned const q, unsigned const p,
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b, size_t const*const nb,
+              value_t *c, size_t const*const nc, size_t const*const wc
+        )
 {
 
-	if(!is_case<8>(p,m,pia)){
-		set_blas_threads(std::thread::hardware_concurrency());
-        // mtm(execution::blas, m, p,  a, na, wa, pia,  b, nb,  c, nc, wc, pic);
-	}
-	else {
-		assert(is_case<8>(p,m,pia));
-        //auto const inv_pi_q = compute_inverse_pi_q( pia, pic, p, m );
+    if(!is_case_rm<8>(p,q,pia)){
+        set_blas_threads(std::thread::hardware_concurrency());
+        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+    }
+    else {
+        assert(is_case_rm<8>(p,q,pia));
+        set_blas_threads(1);
 
-		set_blas_threads(1);
+        auto const qh = compute_qhat( pia, p, q );
 
-		assert(m > 0);
-		assert(p>2);
+        assert(q>0);
+        assert(p>2);
 
-		assert(pia[0]!=pia[p-1] );
-        //assert(inv_pi_q != p);
-		assert(m != pia[p-1]);
+        assert(pia[0]!=pia[p-1] );
+        assert(qh != p);
+        assert(q != pia[p-1]);
+        assert(p>qh);
+        assert(qh>0);
 
-		auto const na_pia_1 = na[pia[0]-1];
+        // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
+        auto const num = product(na, pia, qh+1,p);
 
-		auto const na_m = na[m-1];
-		auto const wa_m = wa[m-1];
-
-		auto const pia_pair = divide_layout(pia, p, m);
-		auto const pia2 = pia_pair.second; // same for a and c
-		assert(pia_pair.first.size() == 2);
-		assert(pia2.size() > 0);
-
-		auto const wa_pair = divide(wa, pia, p, m);
-		auto const wa2 = wa_pair.second; // NOT same for a and c
-		assert(wa_pair.first.size() == 2);
-		assert(wa2.size() > 0);
-
-        auto const wc_pair = divide(wc, pia, p-1);
-		auto const wc2 = wc_pair.second; // NOT same for a and c
-        assert(wc_pair.first.size() == 2);
-		assert(wc2.size() > 0);
-
-		assert(wc2.size() == wa2.size());
-
-		auto const na_pair = divide(na, pia, p, m);
-		auto const na2 = na_pair.second; // same for a and c
-		assert(na2.size() > 0);
-		
-		auto const nn = std::accumulate(na2.begin(),na2.end(),1ul,std::multiplies<>());
-		//auto const nn = na2.product();
-		auto va2 = generate_strides(na2,pia2); // same for a and c
-
+        auto const waq = wa[q-1];
+        auto const wcq = wc[q-1];
 
         auto gemm = tlib::detail::gemm_row::run<value_t>;
 
+        #pragma omp parallel for schedule(dynamic) firstprivate(p, q, qh, num, waq,wcq, a,b,c)
+        for(size_t k = 0u; k < num; ++k){
+            auto aa = a+k*waq;
+            auto cc = c+k*wcq;
 
-
-		#pragma omp parallel for schedule(dynamic) firstprivate(p, wc2, wa2,va2,pia2,  na_m,wa_m,na_pia_1, a,b,c)
-        for(size_t k = 0ull; k < nn; ++k){
-			auto ka = at_at_1(k, va2, wa2, pia2);
-			auto kc = at_at_1(k, va2, wc2, pia2);
-			auto const*const ap = a + ka;
-			auto      *const cp = c + kc;
-            // gemv_col_blas( ap,b,cp, na_pia_1, na_m, wa_m  );
-
-            gemm( ap,b,cp, na_pia_1, na_m, wa_m  );
-		}
-	}
+            multiple_gemm_with_slices ( gemm, qh, q, qh,  aa,na,wa,pia,  b,  cc,nc,wc );
+        }
+    }
 }
+
+
+
+// only parallelize the outer dimensions
+template<class value_t, class size_t>
+inline void ttm(
+        parallel_policy::omp_forloop_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
+        unsigned const q, unsigned const p,
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b, size_t const*const nb,
+              value_t *c, size_t const*const nc, size_t const*const wc
+        )
+{
+
+    if(!is_case_rm<8>(p,q,pia)){
+        set_blas_threads(std::thread::hardware_concurrency());
+        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+    }
+    else {
+        assert(is_case_rm<8>(p,q,pia));
+        set_blas_threads(1);
+
+        auto const qh = compute_qhat( pia, p, q );
+
+        assert(q>0);
+        assert(p>2);
+
+        assert(pia[0]!=pia[p-1] );
+        assert(qh != p);
+        assert(q != pia[p-1]);
+        assert(p>qh);
+        assert(qh>0);
+
+        // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
+        auto const num = product(na, pia, qh+1,p);
+
+        auto const waq = wa[q-1];
+        auto const wcq = wc[q-1];
+
+        // num = n[pi[1]] * n[pi[2]] * ... * n[q] with pi[qh] = q
+        auto const nnq = product(na, pia, 1, qh);
+        //auto const nnq = product_qhat(na, pia, qh);
+
+        auto m      = nc[q-1];
+        auto nq     = na[q-1];
+
+        #pragma omp parallel for schedule(dynamic) firstprivate(p, q, qh, m,nnq, num, waq,wcq, a,b,c)
+        for(size_t k = 0u; k < num; ++k){
+
+            auto aa = a+k*waq;
+            auto cc = c+k*wcq;
+
+            tlib::detail::gemm_row::run( b,aa,cc, m,nnq,nq,  nq,nnq,nnq);
+        }
+    }
+}
+
+
+
+
+
+//template<class value_t, class size_t>
+//inline void ttm(
+//            parallel_policy::omp_forloop, slicing_policy::slice_all,
+//            size_t const q,
+//			size_t const p,
+//			value_t const*const a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+//			value_t const*const b, size_t const*const nb,
+//            value_t      *const c, size_t const*const nc, size_t const*const wc
+//			)
+//{
+
+//    if(!is_case<8>(p,q,pia)){
+//		set_blas_threads(std::thread::hardware_concurrency());
+//        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+//	}
+//	else {
+//        assert(is_case<8>(p,q,pia));
+//        //auto const qh = compute_qhat( pia, pic, p, m );
+
+//		set_blas_threads(1);
+
+//        assert(q>0u);
+//        assert(p>2u);
+
+
+
+//		assert(pia[0]!=pia[p-1] );
+//        //assert(qh != p);
+//        assert(q != pia[p-1]);
+
+
+//        auto const n_pi_1 = na[pia[0]-1];
+
+//        auto const m  = nc[q-1];
+//        auto const nq = na[q-1];
+//        auto const wq = wa[q-1];
+
+//        assert(nb[0] == m);
+//        assert(nb[1] == nq);
+
+
+//        auto const pia_pair = divide_layout(pia, p, q);
+//		auto const pia2 = pia_pair.second; // same for a and c
+//		assert(pia_pair.first.size() == 2);
+//		assert(pia2.size() > 0);
+
+//        auto const wa_pair = divide(wa, pia, p, q);
+//		auto const wa2 = wa_pair.second; // NOT same for a and c
+//		assert(wa_pair.first.size() == 2);
+//		assert(wa2.size() > 0);
+
+//        auto const wc_pair = divide(wc, pia, p, q);
+//		auto const wc2 = wc_pair.second; // NOT same for a and c
+//        assert(wc_pair.first.size() == 2);
+//		assert(wc2.size() > 0);
+
+//		assert(wc2.size() == wa2.size());
+
+//        auto const na_pair = divide(na, pia, p, q);
+//		auto const na2 = na_pair.second; // same for a and c
+//		assert(na2.size() > 0);
+		
+//		auto const nn = std::accumulate(na2.begin(),na2.end(),1ul,std::multiplies<>());
+//		//auto const nn = na2.product();
+//		auto va2 = generate_strides(na2,pia2); // same for a and c
+
+
+//        auto gemm = tlib::detail::gemm_row::run<value_t>;
+
+
+
+//        #pragma omp parallel for schedule(dynamic) firstprivate(p, wc2, wa2,va2,pia2,  m,nq,wq,n_pi_1, a,b,c)
+//        for(size_t k = 0ull; k < nn; ++k){
+//			auto ka = at_at_1(k, va2, wa2, pia2);
+//			auto kc = at_at_1(k, va2, wc2, pia2);
+//            auto const*const aa = a + ka;
+//            auto      *const cc = c + kc;
+
+//            //    A   B   C  M  N       K    LDA  LDB     LDC
+//            gemm( b, aa, cc, m, n_pi_1, nq,  nq,  n_pi_1, n_pi_1);
+//		}
+//	}
+//}
 
 
 
@@ -496,16 +561,16 @@ inline void ttv(
 	}
 	else {
 		assert(is_case<8>(p,m,pia));
-        auto const inv_pi_q = compute_inverse_pi_q( pia, pic, p, m );
+        auto const qh = compute_qhat( pia, pic, p, m );
 
 		assert(m>0);
 
 		auto const na_m = na[m-1];
 		auto const wa_m = wa[m-1];
 
-        auto const n = compute_ninvpia( na, pia, inv_pi_q );
+        auto const n = product_qhat( na, pia, qh );
 		assert(n == wa_m);
-        multiple_gemm_with_subtensors( gemv_col<value_t,size_t>, p, p-1, n, na_m, wa_m, inv_pi_q, a, na, wa, pia, b,  c, nc, wc, pic);
+        multiple_gemm_with_subtensors( gemv_col<value_t,size_t>, p, p-1, n, na_m, wa_m, qh, a, na, wa, pia, b,  c, nc, wc, pic);
 	}
 }
 	
@@ -536,7 +601,7 @@ inline void ttv(
 		assert(is_case<8>(p,m,pia));
 		assert(m>0);
 				
-        auto const inv_pi_q = compute_inverse_pi_q( pia, pic, p, m );
+        auto const qh = compute_qhat( pia, pic, p, m );
 
 		auto const na_m = na[m-1];
 		auto const wa_m = wa[m-1];
@@ -545,21 +610,21 @@ inline void ttv(
 
 		// m != pia[0] && m != pia[p-1]
 		assert(p>2);
-        assert(inv_pi_q != p);
+        assert(qh != p);
 
 		auto maxp = size_t{};
-        for(auto k = inv_pi_q; k <= p; ++k)
-            if(maxp < k) // inv_pi_q < maxp &&
+        for(auto k = qh; k <= p; ++k)
+            if(maxp < k) // qh < maxp &&
 				maxp = k;
 		assert(maxp >= 2);
-        assert(inv_pi_q != maxp);
+        assert(qh != maxp);
 
-        auto n = compute_ninvpia( na, pia, inv_pi_q ); // this is for the most inner computation
+        auto n = product_qhat( na, pia, qh ); // this is for the most inner computation
 		assert(n == wa_m);
-        #pragma omp parallel for schedule(dynamic) firstprivate(p,m,n,inv_pi_q,maxp,   a,na,wa,pia,  b,c,nc,wc,pic)
+        #pragma omp parallel for schedule(dynamic) firstprivate(p,m,n,qh,maxp,   a,na,wa,pia,  b,c,nc,wc,pic)
 		for(size_t i = 0; i < na[pia[maxp-1]-1]; ++i)
             multiple_gemm_with_subtensors
-                ( gemv_col<value_t,size_t>, p-1,p-2,n,  na_m,wa_m,inv_pi_q,  a+i*wa[pia[maxp-1]-1],na,wa,pia,  b,  c+i*wc[pic[maxp-2]-1],nc,wc,pic );
+                ( gemv_col<value_t,size_t>, p-1,p-2,n,  na_m,wa_m,qh,  a+i*wa[pia[maxp-1]-1],na,wa,pia,  b,  c+i*wc[pic[maxp-2]-1],nc,wc,pic );
 	}
 }
 
@@ -589,8 +654,8 @@ inline void ttv(
 		assert(p>2);
 		assert(is_case<8>(p,m,pia));
 					
-        auto const inv_pi_q = compute_inverse_pi_q( pia, pic, p, m );
-        assert(inv_pi_q!=p);
+        auto const qh = compute_qhat( pia, pic, p, m );
+        assert(qh!=p);
 
 		auto const na_m = na[m-1];
 		auto const wa_m = wa[m-1];
@@ -598,20 +663,20 @@ inline void ttv(
 		set_blas_threads(1);
 
 		auto maxp = size_t{};
-        for(auto k = inv_pi_q; k <= p; ++k)
-            if(maxp < k) // inv_pi_q < maxp &&
+        for(auto k = qh; k <= p; ++k)
+            if(maxp < k) // qh < maxp &&
 				maxp = k;
 
 		assert(maxp >= 2);
-        assert(inv_pi_q != maxp);
+        assert(qh != maxp);
 
-        auto n = compute_ninvpia( na, pia, inv_pi_q ); // this is for the most inner computation
+        auto n = product_qhat( na, pia, qh ); // this is for the most inner computation
 		assert(n == wa_m);
 
-        #pragma omp parallel for schedule(dynamic) firstprivate(p,m,n,inv_pi_q,maxp,   a,na,wa,pia,  b,c,nc,wc,pic)
+        #pragma omp parallel for schedule(dynamic) firstprivate(p,m,n,qh,maxp,   a,na,wa,pia,  b,c,nc,wc,pic)
 		for(size_t i = 0; i < na[pia[maxp-1]-1]; ++i)
             multiple_gemm_with_subtensors
-                (gemv_col_blas<value_t,size_t>, p-1,p-2,n,  na_m,wa_m,inv_pi_q,  a+i*wa[pia[maxp-1]-1],na,wa,pia,  b,  c+i*wc[pic[maxp-2]-1],nc,wc,pic);
+                (gemv_col_blas<value_t,size_t>, p-1,p-2,n,  na_m,wa_m,qh,  a+i*wa[pia[maxp-1]-1],na,wa,pia,  b,  c+i*wc[pic[maxp-2]-1],nc,wc,pic);
 	}
 }
 
@@ -639,30 +704,30 @@ inline void ttv(
 		assert(is_case<8>(p,m,pia));
 		assert(m>0);
 		
-        auto const inv_pi_q = compute_inverse_pi_q( pia, pic, p, m );
+        auto const qh = compute_qhat( pia, pic, p, m );
 
 		assert(p>2);
-        assert(inv_pi_q!=p);
+        assert(qh!=p);
 
 		set_blas_threads(1);
 
-        assert(p>inv_pi_q);
-        assert(inv_pi_q>0);
+        assert(p>qh);
+        assert(qh>0);
 
 		auto const na_m = na[m-1];
 		auto const wa_m = wa[m-1];
 
 		auto num = 1u;
-        for(auto i = inv_pi_q; i < p; ++i)
+        for(auto i = qh; i < p; ++i)
 			num *= na[pia[i]-1];
 
-        auto const wa_m1 = wa[pia[inv_pi_q  ]-1];
-        auto const wc_m1 = wc[pic[inv_pi_q-1]-1];
+        auto const wa_m1 = wa[pia[qh  ]-1];
+        auto const wc_m1 = wc[pic[qh-1]-1];
 
-        #pragma omp parallel for schedule(dynamic) firstprivate(p,m,inv_pi_q,wa_m1,wc_m1,   a,na,wa,pia,  b,c,nc,wc,pic)
+        #pragma omp parallel for schedule(dynamic) firstprivate(p,m,qh,wa_m1,wc_m1,   a,na,wa,pia,  b,c,nc,wc,pic)
 		for(size_t i = 0; i < num; ++i)
             multiple_gemm_with_subtensors
-                (gemv_col_blas<value_t,size_t>,  inv_pi_q-1, inv_pi_q-1, wa_m, na_m, wa_m, inv_pi_q, a+i*wa_m1,na,wa,pia,    b,   c+i*wc_m1,nc,wc,pic );
+                (gemv_col_blas<value_t,size_t>,  qh-1, qh-1, wa_m, na_m, wa_m, qh, a+i*wa_m1,na,wa,pia,    b,   c+i*wc_m1,nc,wc,pic );
 	}
 }
 
