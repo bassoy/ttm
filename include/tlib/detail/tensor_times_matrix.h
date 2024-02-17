@@ -256,6 +256,112 @@ inline void ttm(
 }
 
 
+// only parallelize the outer dimensions
+template<class value_t, class size_t>
+inline void ttm(
+        parallel_policy::omp_forloop_t, slicing_policy::slice_t, fusion_policy::outer_t,
+        unsigned const q, unsigned const p,
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b, size_t const*const nb,
+              value_t *c, size_t const*const nc, size_t const*const wc
+        )
+{
+
+    if(!is_case_rm<8>(p,q,pia)){
+		set_blas_threads(std::thread::hardware_concurrency());
+        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+	}
+	else {
+        assert(is_case_rm<8>(p,q,pia));
+        assert(p>2);
+        assert(q>0);
+
+		set_blas_threads(1);
+
+        auto const qh = compute_qhat( pia, p, q );
+
+        // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
+        auto const num = product(na, pia, qh+1,p+1);
+
+        // waq  = 1 * n[pi[1]] * n[pi[2]] * ... * n[pi[qh]] * n[pi[qh+1]]
+        auto const waq = wa[pia[qh]-1];
+        auto const wcq = wc[pia[qh]-1];
+
+        auto gemm = tlib::detail::gemm_row::run<value_t>;
+
+        #pragma omp parallel for schedule(dynamic) firstprivate(p,q,qh,num,a,b,c)
+        for(size_t k = 0u; k < num; ++k){
+            auto aa = a+k*waq;
+            auto cc = c+k*wcq;
+
+            multiple_gemm_with_slices ( gemm, qh, q, qh,  aa,na,wa,pia,  b,  cc,nc,wc );
+        }
+	}
+}
+
+
+
+// only parallelize the outer dimensions
+template<class value_t, class size_t>
+inline void ttm(
+        parallel_policy::omp_forloop_t, slicing_policy::slice_t, fusion_policy::all_t,
+        unsigned const q, unsigned const p,
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b, size_t const*const nb,
+              value_t *c, size_t const*const nc, size_t const*const wc
+        )
+{
+
+    if(!is_case_rm<8>(p,q,pia)){
+        set_blas_threads(std::thread::hardware_concurrency());
+        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+    }
+    else {
+        assert(is_case_rm<8>(p,q,pia));
+        assert(p>2);
+        assert(q>0);
+
+        set_blas_threads(1);
+
+        auto const qh = compute_qhat( pia, p, q );
+
+        // outer = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
+        auto const outer = product(na, pia, qh+1,p+1);
+
+        // w[pi[q]]  = 1 * n[pi[1]] * n[pi[2]] * ... * n[pi[qh-1]]
+        auto const wao = wa[pia[qh]-1];
+        auto const wco = wc[pia[qh]-1];
+
+        // inner = n[pi[2]] * ... * n[pi[qh-1]] with pi[qh] = q
+        auto const inner = product(na, pia, 2, qh);
+
+        auto const wai = na[pia[0]-1];
+        auto const wci = nc[pia[0]-1];
+
+
+        auto m      = nc[q-1];
+        auto nq     = na[q-1];
+        auto n1     = na[pia[0]-1];
+        auto wq     = wa[q-1];
+
+
+
+        auto gemm = tlib::detail::gemm_row::run<value_t>;
+
+        #pragma omp parallel for schedule(dynamic) collapse(2) firstprivate(p,q,qh,outer,inner,wai,wci,wao,wco,wq,n1,a,b,c)
+        for(size_t k = 0u; k < outer; ++k){
+            for(size_t j = 0u; j < inner; ++j){
+                auto aa = a+k*wao + j*wai;
+                auto cc = c+k*wco + j*wci;
+
+                tlib::detail::gemm_row::run( b,aa,cc, m,n1,nq,  nq,wq,wq);
+            }
+        }
+    }
+}
+
+
+
 template<class value_t, class size_t>
 inline void ttm(
             parallel_policy::threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::none_t,
@@ -280,116 +386,6 @@ inline void ttm(
     }
 }
 
-
-
-
-
-
-// only parallelize the outer dimensions
-template<class value_t, class size_t>
-inline void ttm(
-        parallel_policy::omp_forloop_t, slicing_policy::slice_t, fusion_policy::outer_t,
-        unsigned const q, unsigned const p,
-        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-        const value_t *b, size_t const*const nb,
-              value_t *c, size_t const*const nc, size_t const*const wc
-        )
-{
-
-    if(!is_case_rm<8>(p,q,pia)){
-		set_blas_threads(std::thread::hardware_concurrency());
-        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
-	}
-	else {
-        assert(is_case_rm<8>(p,q,pia));
-		set_blas_threads(1);
-		
-        auto const qh = compute_qhat( pia, p, q );
-
-        assert(q>0);
-		assert(p>2);
-
-		assert(pia[0]!=pia[p-1] );
-        assert(qh != p);
-        assert(q != pia[p-1]);
-        assert(p>qh);
-        assert(qh>0);
-
-        // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
-        auto const num = product(na, pia, qh+1,p+1);
-
-        // waq  = 1 * n[pi[1]] * n[pi[2]] * ... * n[pi[qh]]
-        auto const waq = wa[pia[qh]-1]; // q-1
-        auto const wcq = wc[pia[qh]-1]; // q-1
-
-//        std::cout << "waq = " << waq << std::endl;
-//        std::cout << "wcq = " << wcq << std::endl;
-
-        auto gemm = tlib::detail::gemm_row::run<value_t>;
-
-        #pragma omp parallel for schedule(dynamic) firstprivate(p,q,qh,num,a,b,c)
-        for(size_t k = 0u; k < num; ++k){
-            auto aa = a+k*waq;
-            auto cc = c+k*wcq;
-
-
-            multiple_gemm_with_slices ( gemm, qh, q, qh,  aa,na,wa,pia,  b,  cc,nc,wc );
-        }
-	}
-}
-
-
-// only parallelize the outer dimensions
-template<class value_t, class size_t>
-inline void ttm(
-        parallel_policy::omp_forloop_t, slicing_policy::slice_t, fusion_policy::all_t,
-        unsigned const q, unsigned const p,
-        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-        const value_t *b, size_t const*const nb,
-              value_t *c, size_t const*const nc, size_t const*const wc
-        )
-{
-
-    if(!is_case_rm<8>(p,q,pia)){
-        set_blas_threads(std::thread::hardware_concurrency());
-        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
-    }
-    else {
-        assert(is_case_rm<8>(p,q,pia));
-        set_blas_threads(1);
-
-        auto const qh = compute_qhat( pia, p, q );
-
-        assert(q>0);
-        assert(p>2);
-
-        assert(pia[0]!=pia[p-1] );
-        assert(qh != p);
-        assert(q != pia[p-1]);
-        assert(p>qh);
-        assert(qh>0);
-
-        // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
-        auto const num = product(na, pia, qh+1,p+1);
-
-        auto const waq = wa[q-1];
-        auto const wcq = wc[q-1];
-
-        auto gemm = tlib::detail::gemm_row::run<value_t>;
-
-        #pragma omp parallel for schedule(dynamic) firstprivate(p, q, qh, num, waq,wcq, a,b,c)
-        for(size_t k = 0u; k < num; ++k){
-            auto aa = a+k*waq;
-            auto cc = c+k*wcq;
-
-            multiple_gemm_with_slices ( gemm, qh, q, qh,  aa,na,wa,pia,  b,  cc,nc,wc );
-        }
-    }
-}
-
-
-
-// only parallelize the outer dimensions
 template<class value_t, class size_t>
 inline void ttm(
         parallel_policy::omp_forloop_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
@@ -406,28 +402,22 @@ inline void ttm(
     }
     else {
         assert(is_case_rm<8>(p,q,pia));
+        assert(q>0);
+        assert(p>2);
+
         set_blas_threads(1);
 
         auto const qh = compute_qhat( pia, p, q );
 
-        assert(q>0);
-        assert(p>2);
-
-        assert(pia[0]!=pia[p-1] );
-        assert(qh != p);
-        assert(q != pia[p-1]);
-        assert(p>qh);
-        assert(qh>0);
-
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const num = product(na, pia, qh+1,p+1);
 
-        auto const waq = wa[q-1];
-        auto const wcq = wc[q-1];
+        // w[pi[q]]  = 1 * n[pi[1]] * n[pi[2]] * ... * n[pi[qh-1]]
+        auto const waq = wa[pia[qh]-1];
+        auto const wcq = wc[pia[qh]-1];
 
-        // num = n[pi[1]] * n[pi[2]] * ... * n[q] with pi[qh] = q
-        auto const nnq = product(na, pia, 1, qh+1);
-        //auto const nnq = product_qhat(na, pia, qh);
+        // num = n[pi[1]] * n[pi[2]] * ... * n[pi[qh-1]] with pi[qh] = q
+        auto const nnq = product(na, pia, 1, qh);
 
         auto m      = nc[q-1];
         auto nq     = na[q-1];
@@ -443,6 +433,53 @@ inline void ttm(
     }
 }
 
+
+template<class value_t, class size_t>
+inline void ttm(
+        parallel_policy::omp_forloop_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
+        unsigned const q, unsigned const p,
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b, size_t const*const nb,
+              value_t *c, size_t const*const nc, size_t const*const wc
+        )
+{
+
+    if(!is_case_rm<8>(p,q,pia)){
+        set_blas_threads(std::thread::hardware_concurrency());
+        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+    }
+    else {
+        assert(is_case_rm<8>(p,q,pia));
+        assert(q>0);
+        assert(p>2);
+
+        set_blas_threads(1);
+
+        auto const qh = compute_qhat( pia, p, q );
+
+        // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
+        auto const num = product(na, pia, qh+1,p+1);
+
+        // w[pi[q]]  = 1 * n[pi[1]] * n[pi[2]] * ... * n[pi[qh-1]]
+        auto const waq = wa[pia[qh]-1];
+        auto const wcq = wc[pia[qh]-1];
+
+        // num = n[pi[1]] * n[pi[2]] * ... * n[pi[qh-1]] with pi[qh] = q
+        auto const nnq = product(na, pia, 1, qh);
+
+        auto m      = nc[q-1];
+        auto nq     = na[q-1];
+
+        #pragma omp parallel for schedule(dynamic) firstprivate(p, q, qh, m,nnq, num, waq,wcq, a,b,c)
+        for(size_t k = 0u; k < num; ++k){
+
+            auto aa = a+k*waq;
+            auto cc = c+k*wcq;
+
+            tlib::detail::gemm_row::run( b,aa,cc, m,nnq,nq,  nq,nnq,nnq);
+        }
+    }
+}
 
 
 

@@ -225,6 +225,10 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
         auto nna = std::accumulate(na.begin(),na.end(), 1ul, std::multiplies<size_type>());
         auto a   = std::vector<value_type>(nna,value_type{});
 
+//        auto na0 = na[0];
+//        if(std::all_of(na.begin(),na.end(),[na0](auto n){ return n == na0; } ))
+//            continue;
+
         for(auto const& pia : layouts)
         {
             assert(tlib::detail::is_valid_layout(pia.begin(), pia.end()));
@@ -237,7 +241,7 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
 
             for(auto q = 1ul; q <= rank; ++q)
             {
-//                 if(q != 2u)
+//                 if(q != 3u)
 //                    continue;
 
                 ttm_init(q,a,na,wa,pia);
@@ -272,7 +276,7 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
                 auto qh = tlib::detail::compute_qhat(pia.data(),p,q);
 
 
-//                auto wa = A.w();
+                auto wa = A.w();
 //                std::cout << "q=" << q << ", qh=" << qh << std::endl;
 //                std::cout << "na = [ "; std::copy(na.begin(), na.end(), std::ostream_iterator<value_type>(std::cout, " ")); std::cout <<"];" << std::endl;
 //                std::cout << "nc = [ "; std::copy(nc.begin(), nc.end(), std::ostream_iterator<value_type>(std::cout, " ")); std::cout <<"];" << std::endl;
@@ -303,7 +307,7 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
 }
 
 
-TEST(TensorTimesMatrix, ThreadedGemmSlicesNoLoopFusion)
+TEST(TensorTimesMatrix, ThreadedGemmSliceNoLoopFusion)
 {
     using value_type       = double;
     using size_type        = std::size_t;
@@ -328,12 +332,10 @@ TEST(TensorTimesMatrix, ThreadedGemmSubtensorNoLoopFusion)
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,2u>(2u,3);
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,3u>(2u,3);
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,4u>(2u,3);
+//    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,5u>(2u,3);
 }
 
-
-
-
-TEST(TensorTimesMatrix, OmpForLoopSlicesOuterFusion)
+TEST(TensorTimesMatrix, OmpForLoopSliceOuterFusion)
 {
     using value_type       = double;
     using size_type        = std::size_t;
@@ -344,8 +346,38 @@ TEST(TensorTimesMatrix, OmpForLoopSlicesOuterFusion)
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,2u>(2u,3);
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,3u>(2u,3);
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,4u>(2u,3);
+//    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,5u>(2u,3);
 }
 
+
+TEST(TensorTimesMatrix, OmpForLoopSliceAllFusion)
+{
+    using value_type       = double;
+    using size_type        = std::size_t;
+    using execution_policy = tlib::parallel_policy::omp_forloop_t;
+    using slicing_policy   = tlib::slicing_policy::slice_t;
+    using fusion_policy    = tlib::fusion_policy::all_t;
+
+    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,2u>(2u,3);
+    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,3u>(2u,3);
+    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,4u>(2u,3);
+//    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,5u>(2u,3);
+}
+
+
+TEST(TensorTimesMatrix, OmpForLoopSubtensorOuterFusion)
+{
+    using value_type       = double;
+    using size_type        = std::size_t;
+    using execution_policy = tlib::parallel_policy::omp_forloop_t;
+    using slicing_policy   = tlib::slicing_policy::subtensor_t;
+    using fusion_policy    = tlib::fusion_policy::outer_t;
+
+    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,2u>(2u,3);
+    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,3u>(2u,3);
+    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,4u>(2u,3);
+//    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,5u>(2u,3);
+}
 
 
 #if 0

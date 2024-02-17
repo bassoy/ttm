@@ -138,7 +138,7 @@ public:
         assert(pi.size() == 3u);
     }
 
-    cube(cube const& other) : super_type(other.super_type) {}
+    cube(cube const& other) : super_type(other) {}
 
     virtual ~cube() = default;
 
@@ -180,7 +180,7 @@ public:
     {
     }
 
-    tensor(tensor const& other) : super_type(other.super_type) {}
+    tensor(tensor const& other) : super_type(other) {}
 
     virtual ~tensor() = default;
 

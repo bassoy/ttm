@@ -1,5 +1,5 @@
 CXX :=g++
-CXX :=clang++
+#CXX :=clang++
 
 CXX_FLAGS +=-Wextra -Wall -Wpedantic -g -std=c++20 -pthread -DUSE_OPENBLAS -fopenmp 
 # -g -O0 -fprofile-arcs -ftest-coverage -fno-inline 
