@@ -187,7 +187,7 @@ inline void multiple_gemm_with_subtensors (
 		)
 {
     if(r>1){
-        if (r < qh) {
+        if (r <= qh) {
             multiple_gemm_with_subtensors  (gemm, r-1, q,qh,nnq,   a,na,wa,pia,  b,  c,nc,wc);
         }
         else if (r > qh){
@@ -272,6 +272,7 @@ inline void ttm(
     }
     else {
         auto const qh  = compute_qhat( pia, p, q );
+        // nnq = na[pi[1]] * na[pi[2]] * ... * na[pi[qh-1]]
         auto const nnq = product(na, pia, 1, qh); //product_qhat(na, pia, qh);
         auto gemm = tlib::detail::gemm_row::run<value_t>;
 
@@ -315,18 +316,18 @@ inline void ttm(
         assert(qh>0);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
-        auto const num = product(na, pia, qh+1,p);
+        auto const num = product(na, pia, qh+1,p+1);
 
-//		auto num = 1u;
-//        for(auto i = qh; i < p; ++i)
-//			num *= na[pia[i]-1];
+        // waq  = 1 * n[pi[1]] * n[pi[2]] * ... * n[pi[qh]]
+        auto const waq = wa[pia[qh]-1]; // q-1
+        auto const wcq = wc[pia[qh]-1]; // q-1
 
-        auto const waq = wa[q-1];
-        auto const wcq = wc[q-1];
+//        std::cout << "waq = " << waq << std::endl;
+//        std::cout << "wcq = " << wcq << std::endl;
 
         auto gemm = tlib::detail::gemm_row::run<value_t>;
 
-        #pragma omp parallel for schedule(dynamic) firstprivate(p, q, qh, num, waq,wcq, a,b,c)
+        #pragma omp parallel for schedule(dynamic) firstprivate(p,q,qh,num,a,b,c)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
@@ -369,7 +370,7 @@ inline void ttm(
         assert(qh>0);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
-        auto const num = product(na, pia, qh+1,p);
+        auto const num = product(na, pia, qh+1,p+1);
 
         auto const waq = wa[q-1];
         auto const wcq = wc[q-1];
@@ -419,13 +420,13 @@ inline void ttm(
         assert(qh>0);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
-        auto const num = product(na, pia, qh+1,p);
+        auto const num = product(na, pia, qh+1,p+1);
 
         auto const waq = wa[q-1];
         auto const wcq = wc[q-1];
 
         // num = n[pi[1]] * n[pi[2]] * ... * n[q] with pi[qh] = q
-        auto const nnq = product(na, pia, 1, qh);
+        auto const nnq = product(na, pia, 1, qh+1);
         //auto const nnq = product_qhat(na, pia, qh);
 
         auto m      = nc[q-1];
