@@ -23,6 +23,7 @@
 #include <exception>
 #include <cassert>
 #include <iostream>
+#include <sstream>
 
 namespace tlib::gtest
 {
@@ -64,10 +65,10 @@ public:
     inline value_type* data() { return this->container_.data(); }
     inline container_type const&  container() const { return this->container_; }
     inline container_type &  container() { return this->container_; }
-    inline shape_type n()    const { return this->n_; }
-    inline shape_type w()    const { return w_; }
-    inline layout_type pi()   const { return pi_; }
-    inline unsigned  p()    const { return n_.size(); }
+    inline shape_type  const& n()  const { return this->n_; }
+    inline shape_type  const& w()  const { return this->w_; }
+    inline layout_type const& pi() const { return this->pi_; }
+    inline unsigned  p() const { return this->n_.size(); }
 
     void set(layout_type pi)
     {
@@ -151,9 +152,49 @@ protected:
     inline auto at(size_type i, size_type j, size_type k) const{
         return i*this->w_[0] + j*this->w_[1] +  k * this->w_[2];
     }
-
 };
 
+
+
+
+template<class value_t = double>
+class tensor : public matrix<value_t>
+{
+    using super_type = matrix<value_t>;
+
+public:
+    using value_type     = typename super_type::value_type;
+    using size_type      = typename super_type::size_type;
+    using container_type = typename super_type::container_type;
+    using shape_type     = typename super_type::shape_type;
+    using layout_type    = typename super_type::layout_type;
+
+    tensor() = delete;
+    tensor(shape_type n, layout_type const& pi)
+        : super_type(n,value_type(0),pi)
+    {
+    }
+
+    tensor(shape_type n,  container_type const& c, layout_type const& pi)
+        : super_type(n,c,pi)
+    {
+    }
+
+    tensor(tensor const& other) : super_type(other.super_type) {}
+
+    virtual ~tensor() = default;
+
+//    inline value_type      & operator()(size_type i, size_type j, size_type k)       { return this->container_[at(i,j,k)]; }
+//    inline value_type const& operator()(size_type i, size_type j, size_type k) const { return this->container_[at(i,j,k)]; }
+
+    inline value_type      & operator[](size_type j)       { return this->container_[j]; }
+    inline value_type const& operator[](size_type j) const { return this->container_[j]; }
+
+protected:
+//    inline auto at(size_type i, size_type j, size_type k) const{
+//        return i*this->w_[0] + j*this->w_[1] +  k * this->w_[2];
+//    }
+};
 
 
 template<class value_type>
@@ -189,7 +230,7 @@ void init( cube<value_type>& a, unsigned q )
 
     auto element = [q,M,N,K](auto i, auto j, auto k)
     {
-        if(q == 1u) return i+1 + j*M + k*M*N;
+             if(q == 1u) return i+1 + j*M + k*M*N;
         else if(q == 2u) return j+1 + i*N + k*M*N;
         else if(q == 3u) return k+1 + j*M + i*N*K;
 
@@ -304,4 +345,67 @@ std::ostream& operator<< (std::ostream& out, tlib::gtest::cube<value_type> const
     out << ");" << std::endl;
     return out;
 }
+
+
+template<class value_type>
+void stream_out(std::ostringstream& out, tlib::gtest::tensor<value_type> const& a, std::size_t j, unsigned r)
+{
+//    if(r == a.p()){
+//        out << "cat(" << r << ",..." << std::endl;
+//        for(auto ir = 0ull; ir < a.n().at(r-1); ++ir, j += a.w().at(r-1)){
+//            stream_out(out, a, j, r-1);
+//        }
+//        out << ");" << std::endl;
+//    }
+    if(r >= 3){
+        out << "cat("<< r << ",..." << std::endl;
+        for(auto ir = 0ull; ir < a.n().at(r-1); ++ir, j += a.w().at(r-1)){
+            stream_out(out, a, j, r-1);
+        }
+        out << "), ..." << std::endl;
+    }
+    else if (r == 2){
+        out << "[ ... " << std::endl;
+        for(auto i1 = 0ull; i1 < a.n().at(0); ++i1, j += a.w().at(0)){
+            auto j2 = 0ull;
+            for(auto i2 = 0ull; i2 < a.n().at(1)-1; ++i2, j2 += a.w().at(1)){
+                out << a[j+j2] << ", ";
+            }
+            out << a[j+j2] << "; ..." << std::endl;
+        }
+        out << "],..." << std::endl;
+    }
+}
+
+
+template<class value_type>
+std::ostream& operator<< (std::ostream& out, tlib::gtest::tensor<value_type> const& a)
+{
+    auto j = 0ull;
+    if(a.p() == 1u){
+        out << "[ " << std::endl;
+        for(auto i1 = 0ull; i1 < a.n().at(0); ++i1, j += a.w().at(0)){
+            out << a[j] << ", ";
+        }
+        out << "];" << std::endl;
+    }
+    else if (a.p() == 2u){
+        out << "[ ... " << std::endl;
+        for(auto i2 = 0ull; i2 < a.n().at(1); ++i2, j += a.w().at(1)){
+            for(auto i1 = 0ull; i1 < a.n().at(0); ++i1, j += a.w().at(0)){
+                out << a[j] << ", ";
+            }
+            out << "..." << std::endl;
+        }
+        out << "];" << std::endl;
+    }
+    else{
+        std::ostringstream sout;
+        stream_out(sout, a, j, a.p());
+        out << sout.str();
+    }
+    return out;
+}
+
+
 

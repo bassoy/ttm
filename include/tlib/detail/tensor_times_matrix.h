@@ -160,8 +160,9 @@ inline void multiple_gemm_with_slices (
         auto n1     = na[pia[0]-1];
         auto m      = nc[q-1];
         auto nq     = na[q-1];
+        auto wq     = wa[q-1];
 
-        gemm( b,a,c, m,n1,nq,  nq,n1,n1);
+        gemm( b,a,c, m,n1,nq,  nq,wq,wq);  // ... m,n1,nq,   nq, n1, n1
 	}
 }
 
