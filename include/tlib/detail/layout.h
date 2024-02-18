@@ -123,4 +123,7 @@ inline auto inverse_mode(InputIt layout_begin, InputIt layout_end, SizeType mode
 	return inverse_mode+1;
 }
 
+
+
+
 } // namespace tlib::detail

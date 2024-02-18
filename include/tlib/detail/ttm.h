@@ -26,7 +26,7 @@
 #include <algorithm>
 #include <thread>
 
-#include "matrix_times_matrix.h"
+#include "mtm.h"
 #include "tags.h"
 #include "cases.h"
 #include "strides.h"
@@ -57,50 +57,6 @@ inline void set_blas_threads(size_t num)
 	mkl_set_num_threads(num);
 #endif
 }
-
-
-/* @brief Computes \hat{q} = \pi^{-1}(q)
- *
- *
- * \hat{q} = \pi^{-1}(q) <=> q = \pi_{\hat{q}}
-*/
-template<class size_t>
-inline size_t compute_qhat(size_t const*const pi,  unsigned const p, unsigned const q)
-{
-    unsigned k = 0;
-    for(; k<p; ++k)
-        if(pi[k] == q)
-            break;
-    assert(k != p);
-    auto const qh = k+1; // pia^{-1}(m)
-    assert(pi[qh-1]==q);
-
-    return qh;
-}
-
-
-
-
-/* @brief Computes number of elements for the first pi_{1}...pi_{\hat{q}-1} modes
- *
- * \hat{q} = pi^{-1}(q)
- *
- * nn = prod_{k=1}^{\hat{q}-1} n_{\pi_{k}}
-*/
-
-template<class size_t>
-inline auto product_qhat(size_t const*const n, size_t const*const pi, unsigned qh)
-{
-    assert(qh>0u);
-
-	size_t nn = 1;
-    for(unsigned r = 0; r<(qh-1); ++r){
-        nn *= n[pi[r]-1];
-    }
-
-	return nn;
-}
-
 
 /* @brief Computes number of elements between modes start and finish
  *
@@ -149,8 +105,8 @@ inline void multiple_gemm_with_slices (
 		}
         else{ //  r>1 && r != qh
             auto pia_r = pia[r-1]-1;
-            for(unsigned i = 0; i < na[pia_r]; ++i){ // , a+=wa[pia[r-1]-1], c+=wc[pic[q-1]-1]
-                multiple_gemm_with_slices(gemm, r-1, q, qh,  a+i*wa[pia_r],na,wa,pia,  b,  c+i*wc[pia_r],nc,wc);
+            for(unsigned i = 0; i < na[pia_r]; ++i, a+=wa[pia_r], c+=wc[pia_r]){
+                multiple_gemm_with_slices(gemm, r-1, q, qh,  a,na,wa,pia,  b,  c,nc,wc);
             }
 		}
 	}
@@ -166,7 +122,7 @@ inline void multiple_gemm_with_slices (
 
 
 
-/* @brief Recursively executes gemv with subtensors
+/* @brief Recursively executes gemm with subtensors
  * 
  * @note is applied in tensor-times-matrix with subtensors
  * @note gemm_t should be a general matrix-times-matrix function for matrices of row-major format
@@ -190,8 +146,8 @@ inline void multiple_gemm_with_subtensors (
         }
         else if (r > qh){
             auto pia_r = pia[r-1]-1u;
-            for(size_t i = 0; i < na[pia_r]; ++i){
-                multiple_gemm_with_subtensors (gemm, r-1, q,qh,nnq,  a+i*wa[pia_r],na,wa,pia,  b,  c+i*wc[pia_r],nc,wc);
+            for(size_t i = 0; i < na[pia_r]; ++i, a+=wa[pia_r], c+=wc[pia_r]){
+                multiple_gemm_with_subtensors (gemm, r-1, q,qh,nnq,  a,na,wa,pia,  b,  c,nc,wc);
             }
         }
     }
@@ -227,10 +183,6 @@ inline void ttm(
 
 
 
-/*
- *
- *
-*/
 template<class value_t, class size_t>
 inline void ttm(
             parallel_policy::threaded_gemm_t, slicing_policy::slice_t, fusion_policy::none_t,
@@ -246,7 +198,7 @@ inline void ttm(
         mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
 	}
 	else {
-        auto const qh = compute_qhat( pia, p, q );
+        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
         auto gemm = tlib::detail::gemm_row::run<value_t>;
 
         multiple_gemm_with_slices(gemm, p, q, qh,  a,na,wa,pia,   b,  c,nc,wc);
@@ -276,7 +228,7 @@ inline void ttm(
 
 		set_blas_threads(1);
 
-        auto const qh = compute_qhat( pia, p, q );
+        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const num = product(na, pia, qh+1,p+1);
@@ -321,7 +273,7 @@ inline void ttm(
 
         set_blas_threads(1);
 
-        auto const qh = compute_qhat( pia, p, q );
+        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
 
         // outer = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const outer = product(na, pia, qh+1,p+1);
@@ -371,9 +323,9 @@ inline void ttm(
         mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
     }
     else {
-        auto const qh  = compute_qhat( pia, p, q );
+        auto const qh  = tlib::detail::inverse_mode(pia, pia+p, q);
         // nnq = na[pi[1]] * na[pi[2]] * ... * na[pi[qh-1]]
-        auto const nnq = product(na, pia, 1, qh); //product_qhat(na, pia, qh);
+        auto const nnq = product(na, pia, 1, qh);
         auto gemm = tlib::detail::gemm_row::run<value_t>;
 
         multiple_gemm_with_subtensors(gemm, p, q, qh, nnq, a,na,wa,pia,   b,  c,nc,wc);
@@ -401,7 +353,7 @@ inline void ttm(
 
         set_blas_threads(1);
 
-        auto const qh = compute_qhat( pia, p, q );
+        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const num = product(na, pia, qh+1,p+1);
@@ -449,7 +401,7 @@ inline void ttm(
 
         set_blas_threads(1);
 
-        auto const qh = compute_qhat( pia, p, q );
+        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const pp = product(na, pia, qh+1,p+1);

@@ -60,12 +60,12 @@ inline void ttm_init(
     assert(p>=2);
     assert(1<=q && q <= p);
 
-    const size_type q1 = tlib::detail::inverse_mode(pia.begin(), pia.end(), q );
-    assert(1<=q1 && q1 <= p);
+    const size_type qh = tlib::detail::inverse_mode(pia.begin(), pia.end(), q );
+    assert(1<=qh && qh <= p);
 
     size_type k = 0ul;
 
-    ttm_init_recursive(p,q1,0ul,k,a,na,wa,pia);
+    ttm_init_recursive(p,qh,0ul,k,a,na,wa,pia);
 }
 
 
@@ -81,9 +81,7 @@ template<class value_type>
 inline value_type refc(std::vector<value_type> const& a, std::size_t j, std::size_t jq) // unsigned q
 {
     static auto sum = [](auto n) { return (n*(n+1))/2u; };
-
     // j = i(1)*w(1) + ... + i(q-1)*w(q-1) + i(q+1)*w(q+1) + ... + i(p)*w(p)
-
     return sum(a[jq]) - sum(a[j]-1.0);
 };
 
@@ -125,10 +123,7 @@ ttm_check(
         auto jq = ja + (na[q1]-1)*wa[q1];
         auto ref = refc(a,ja,jq);
         for(auto i = 0ul; i < nc[q1]; ++i, jc+=wc[q1]){
-            // EXPECT_FLOAT_EQ(c[jc],ref);
-
             testing::internal::FloatingPoint<value_type> lhs(c[jc]), rhs(ref);
-
             if (!lhs.AlmostEquals(rhs)) {
               return false;
             }
@@ -209,7 +204,7 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
                 auto B = tlib::gtest::matrix(nb,b,{2,1});
 
 
-                auto qh = tlib::detail::compute_qhat(pia.data(),p,q);
+                auto qh = tlib::detail::inverse_mode(pia.begin(), pia.end(), q);
 
 
                 auto wa = A.w();

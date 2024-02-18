@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "detail/tensor_times_matrix.h"
+#include "detail/ttm.h"
 #include "detail/tensor.h"
 #include "detail/tags.h"
 

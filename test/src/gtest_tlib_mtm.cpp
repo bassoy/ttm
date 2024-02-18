@@ -21,7 +21,9 @@
 #include <functional>
 #include <ostream>
 
-#include <tlib/detail/tensor_times_matrix.h>
+#include "../include/tlib/detail/mtm.h"
+#include "../include/tlib/detail/layout.h"
+
 #include "gtest_aux.h"
 
 
@@ -81,16 +83,11 @@ template<class matrix_type>
     auto cmajor = a.is_cm();
     assert(b.n()[0] == N && b.n()[1] == 1);
 
-    //auto ar = std::cref(a);
-    //auto br = std::cref(b);
-    //auto cr = std::ref(c);
-
     if (cmajor)
     {
         //#pragma omp parallel for collapse(2) firstprivate(M,N, ar,br,cr)
         for(auto j = 0ul; j < N; ++j){
             for(auto i = 0ul; i < M; ++i){
-                //cr.get()[i] += ar.get()(i,j) * br.get()[j];
                 c[i] += a(i,j) * b[j];
             }
         }
@@ -293,7 +290,7 @@ TEST(MatrixTimesVector, Ref)
 
                 auto c = mtv(a,b);
 
-                auto qh = tlib::detail::compute_qhat(a.pi().data(),a.p(),q);
+                auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
                 ttm_check(a.p(),q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
             }
@@ -308,7 +305,7 @@ TEST(MatrixTimesVector, Ref)
 
                 auto c = vtm(a,b);
 
-                auto qh = tlib::detail::compute_qhat(a.pi().data(),a.p(),q);
+                auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
                 ttm_check(a.p(),q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
             }
@@ -351,7 +348,7 @@ TEST(MatrixTimesMatrix, Ref)
 
             auto c = mtm(a,b);
 
-            auto qh = tlib::detail::compute_qhat(f.data(),p,q);
+            auto qh = tlib::detail::inverse_mode(f.begin(),f.end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }
@@ -450,7 +447,7 @@ TEST(MatrixTimesMatrix, Case2)
                     b.data(), nb.data(),
                     c.data(), nc.data());
 
-        auto qh = tlib::detail::compute_qhat(pia.data(),p,q);
+        auto qh = tlib::detail::inverse_mode(pia.begin(),pia.end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
     }
@@ -501,7 +498,7 @@ TEST(MatrixTimesMatrix, Case3)
                     b.data(), nb.data(),
                     c.data(), nc.data());
 
-        auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+        auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
     }
 }
@@ -552,7 +549,7 @@ TEST(MatrixTimesMatrix, Case4)
                     b.data(), nb.data(),
                     c.data(), nc.data());
 
-        auto qh = tlib::detail::compute_qhat(rm.data(),p,q);
+        auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
     }
 }
@@ -602,7 +599,7 @@ TEST(MatrixTimesMatrix, Case5)
                     b.data(), nb.data(),
                     c.data(), nc.data());
 
-        auto qh = tlib::detail::compute_qhat(rm.data(),p,q);
+        auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
     }
@@ -654,7 +651,7 @@ TEST(MatrixTimesMatrix, Case6)
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
@@ -687,7 +684,7 @@ TEST(MatrixTimesMatrix, Case6)
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
 
@@ -722,7 +719,7 @@ TEST(MatrixTimesMatrix, Case6)
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
 
@@ -777,7 +774,7 @@ TEST(MatrixTimesMatrix, Case7)
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
@@ -810,7 +807,7 @@ TEST(MatrixTimesMatrix, Case7)
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
 
@@ -845,7 +842,7 @@ TEST(MatrixTimesMatrix, Case7)
 
             tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::compute_qhat(a.pi().data(),p,q);
+            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
