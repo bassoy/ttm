@@ -138,70 +138,6 @@ ttm_check(
 }
 
 
-
-
-//template<class value_type, class size_type, class execution_policy, class slicing_policy, class fusion_policy>
-//inline void  ttm_check(execution_policy ep, slicing_policy sp, fusion_policy fp,
-//                       unsigned const q, // mode
-//                       std::vector<value_type> const& a,
-//                       std::vector<value_type> const& b,
-//                       std::vector<size_type> const& na, // shape tuple for a
-//                       std::vector<size_type> const& nb,
-//                       std::vector<size_type> const& wa, // stride tuple for a
-//                       std::vector<size_type> const& pia) // layout tuple for a
-//{
-//    assert(na.size() == wa .size());
-//    assert(wa.size() == pia.size());
-
-//    const size_type p  = na.size();
-
-//    assert(1u < p);
-//    assert(1u <= q && q <= p);
-
-//    auto const nq = na.at(q-1);
-//    auto const m  = nb.at(0);
-//    assert(nb.at(1) == nq);
-
-
-//    auto pic = pia; // tlib::detail::generate_output_layout(pia,q);
-//    auto nc  = na; // tlib::detail::generate_output_shape (na ,q);
-//    nc.at(q-1) = m;
-//    auto wc  = tlib::detail::generate_strides(nc ,pic );
-//    auto nnc = std::accumulate(nc.begin(),nc.end(), 1ul, std::multiplies<size_type>());
-//    auto c = std::vector(nnc,value_type{});
-
-//    tlib::tensor_times_matrix(ep,sp,fp,  q,p,  a.data(), na.data(), wa.data(), pia.data(), b.data(), nb.data(), c.data(), nc.data(), wc.data());
-
-
-//    auto A = tlib::gtest::matrix(na,a,pia);
-//    auto B = tlib::gtest::matrix(nb,b,{2,1});
-//    auto C = tlib::gtest::matrix(nc,c,pic);
-
-//    auto qhat = tlib::detail::inverse_mode(pia.begin(),pia.end(),q);
-//    assert(2u <= p);
-//    assert(1u <= qhat && qhat <= p);
-
-//    std::cout << "q=" << q << ", qhat=" << qhat << std::endl;
-
-//    std::cout << "na = [ "; std::copy(na.begin(), na.end(), std::ostream_iterator<value_type>(std::cout, " ")); std::cout <<"];" << std::endl;
-//    std::cout << "nc = [ "; std::copy(nc.begin(), nc.end(), std::ostream_iterator<value_type>(std::cout, " ")); std::cout <<"];" << std::endl;
-
-//    std::cout << "A = " << A << std::endl;
-//    std::cout << "B = " << B << std::endl;
-//    std::cout << "C = " << C << std::endl;
-
-//    auto compute_element = [nq](size_type i){return (nq*nq*(2ul*i-1ul)+nq)/2ul;};
-
-
-
-//    ttm_check(p-1, qhat, 0ul, c, nc, wc, pic, compute_element) ;
-
-//}
-
-
-
-
-
 template<class value_type, class size_type, class execution_policy, class slicing_policy, class fusion_policy, unsigned rank>
 inline void check_tensor_times_matrix(const size_type init, const size_type steps)
 {
@@ -237,11 +173,11 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
 
             assert(tlib::detail::is_valid_strides(pia.begin(), pia.end(),wa.begin()));
 
-//            std::cout <<"pia = [ "; std::copy(pia.begin(), pia.end(), std::ostream_iterator<value_type>(std::cout, " ")); std::cout <<"];" << std::endl;
+//           std::cout <<"pia = [ "; std::copy(pia.begin(), pia.end(), std::ostream_iterator<value_type>(std::cout, " ")); std::cout <<"];" << std::endl;
 
             for(auto q = 1ul; q <= rank; ++q)
             {
-//                 if(q != 3u)
+//                 if(q != 2u)
 //                    continue;
 
                 ttm_init(q,a,na,wa,pia);
@@ -370,6 +306,21 @@ TEST(TensorTimesMatrix, OmpForLoopSubtensorOuterFusion)
     using value_type       = double;
     using size_type        = std::size_t;
     using execution_policy = tlib::parallel_policy::omp_forloop_t;
+    using slicing_policy   = tlib::slicing_policy::subtensor_t;
+    using fusion_policy    = tlib::fusion_policy::outer_t;
+
+    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,2u>(2u,3);
+    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,3u>(2u,3);
+    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,4u>(2u,3);
+//    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,5u>(2u,3);
+}
+
+
+TEST(TensorTimesMatrix, BatchedGemmSubtensorOuterFusion)
+{
+    using value_type       = double;
+    using size_type        = std::size_t;
+    using execution_policy = tlib::parallel_policy::batched_gemm_t;
     using slicing_policy   = tlib::slicing_policy::subtensor_t;
     using fusion_policy    = tlib::fusion_policy::outer_t;
 

@@ -36,8 +36,9 @@
 #include <cblas.h>
 #endif
 
-#ifdef USE_INTELBLAS
-#include <mkl.h>
+#ifdef USE_MKLBLAS
+#include <mkl/mkl.h>
+#include <mkl/mkl_cblas.h>
 #endif
 
 
@@ -51,7 +52,7 @@ inline void set_blas_threads(size_t num)
 {
 #ifdef USE_OPENBLAS
 	openblas_set_num_threads(num);
-#elif defined USE_INTELBLAS
+#elif defined USE_MKLBLAS
 	mkl_set_num_threads(num);
 #endif
 }

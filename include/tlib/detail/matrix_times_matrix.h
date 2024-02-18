@@ -20,8 +20,8 @@
 #include <cblas.h>
 #endif
 
-#ifdef USE_INTELBLAS
-#include <mkl.h>
+#ifdef USE_MKLBLAS
+#include <mkl/mkl_cblas.h>
 #endif
 
 

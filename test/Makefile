@@ -1,26 +1,33 @@
 CXX :=g++
 #CXX :=clang++
 
-CXX_FLAGS +=-Wextra -Wall -Wpedantic -g -std=c++20 -pthread -DUSE_OPENBLAS -fopenmp 
+# -DUSE_OPENBLAS 
+# -DUSE_MLKBLAS
+CXX_FLAGS +=-Wextra -Wall -Wpedantic -O3 -std=c++20 -pthread -fopenmp -DUSE_MKLBLAS
 # -g -O0 -fprofile-arcs -ftest-coverage -fno-inline 
 
-INTEL_DIR :=/opt/intel/mkl
-INTEL_INC :=-DMKL_ILP64 -m64 -I$(INTEL_DIR)/include
-INTEL_LIB :=-Wl,--start-group ${INTEL_DIR}/lib/intel64/libmkl_intel_ilp64.a ${INTEL_DIR}/lib/intel64/libmkl_gnu_thread.a ${INTEL_DIR}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl
+MLKBLAS_DIR :=/usr/lib/x86_64-linux-gnu
+MLKBLAS_LIB :=-Wl,--start-group ${MLKBLAS_DIR}/libmkl_intel_ilp64.a ${MLKBLAS_DIR}/libmkl_intel_thread.a ${MLKBLAS_DIR}/libmkl_core.a -Wl,--end-group -liomp5 -lpthread -lm -ldl -m64
+MLKBLAS_FLAGS := -DMKL_ILP64 -m64
+
+OPENBLAS_INC :=-I/usr/include/x86_64-linux-gnu/openblas64-pthread
+OPENBLAS_LIB :=-lopenblas
 
 GTEST_LIB :=-lgtest -lpthread
 
 TLIB_INC :=-I../include
 
-#$(INTEL_INC)
-INCS +=$(TLIB_INC) -Iinclude -I/usr/include/x86_64-linux-gnu/openblas-pthread
-LIBS +=$(GTEST_LIB) -lgomp -lpthread -lm -lopenblas
+
+
+INCS +=$(TLIB_INC) -Iinclude $(OPENBLAS_INC)
+LIBS +=$(GTEST_LIB) $(OPENBLAS_LIB) $(MLKBLAS_LIB) -lgomp -lpthread -lm 
 
 CFILES2 = $(wildcard src/*.cpp)
 OBJS5   = $(notdir $(CFILES2))
 OBJS6   = $(patsubst %.cpp,%.o,$(OBJS5))
 OBJSC   = $(addprefix build/,$(OBJS6))
 
+CXX_FLAGS += $(MLKBLAS_FLAGS)
 
 TARGET := bin/main
 $(TARGET): $(OBJSC)

@@ -40,8 +40,9 @@
 #include <cblas.h>
 #endif
 
-#ifdef USE_INTELBLAS
-#include <mkl.h>
+#ifdef USE_MKLBLAS
+#include <mkl/mkl.h>
+#include <mkl/mkl_cblas.h>
 #endif
 
 
@@ -55,7 +56,7 @@ inline void set_blas_threads(size_t num)
 {
 #ifdef USE_OPENBLAS
 	openblas_set_num_threads(num);
-#elif defined USE_INTELBLAS
+#elif defined USE_MKLBLAS
 	mkl_set_num_threads(num);
 #endif
 }
@@ -344,10 +345,6 @@ inline void ttm(
         auto n1     = na[pia[0]-1];
         auto wq     = wa[q-1];
 
-
-
-        auto gemm = tlib::detail::gemm_row::run<value_t>;
-
         #pragma omp parallel for schedule(dynamic) collapse(2) firstprivate(p,q,qh,outer,inner,wai,wci,wao,wco,wq,n1,a,b,c)
         for(size_t k = 0u; k < outer; ++k){
             for(size_t j = 0u; j < inner; ++j){
@@ -436,11 +433,11 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
+        parallel_policy::batched_gemm_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb,
-              value_t *c, size_t const*const nc, size_t const*const wc
+        value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
 
@@ -458,7 +455,7 @@ inline void ttm(
         auto const qh = compute_qhat( pia, p, q );
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
-        auto const num = product(na, pia, qh+1,p+1);
+        auto const pp = product(na, pia, qh+1,p+1);
 
         // w[pi[q]]  = 1 * n[pi[1]] * n[pi[2]] * ... * n[pi[qh-1]]
         auto const waq = wa[pia[qh]-1];
@@ -470,14 +467,41 @@ inline void ttm(
         auto m      = nc[q-1];
         auto nq     = na[q-1];
 
-        #pragma omp parallel for schedule(dynamic) firstprivate(p, q, qh, m,nnq, num, waq,wcq, a,b,c)
-        for(size_t k = 0u; k < num; ++k){
+#ifdef USE_MKLBLAS
+        using index_t = MKL_INT;
+        using vector  = std::vector<value_t>;
+        using ivector = std::vector<index_t>;
+        using vvector = std::vector<value_t*>;
 
-            auto aa = a+k*waq;
-            auto cc = c+k*wcq;
+        const auto L = CBLAS_LAYOUT{CblasRowMajor};
+        const auto Ta = std::vector<CBLAS_TRANSPOSE>(pp,CblasNoTrans);
 
-            tlib::detail::gemm_row::run( b,aa,cc, m,nnq,nq,  nq,nnq,nnq);
+        auto Ma = ivector(pp,m);
+        auto Na = ivector(pp,nnq);
+        auto Ka = ivector(pp,nq);
+
+        auto ALPHAa = vector(pp,1.0);
+        auto BETAa  = vector(pp,0.0);
+
+        auto LDAa = ivector(pp,nq);
+        auto LDBa = ivector(pp,nnq);
+        auto LDCa = ivector(pp,nnq);
+
+        auto Ba = vvector(pp,nullptr);
+        auto Aa = vvector(pp,(value_t*)b);
+        auto Ca = vvector(pp,nullptr);
+
+        for(size_t k = 0u; k < pp; ++k){
+            Ba[k] = (value_t*)a+k*waq;
+            Ca[k] = c+k*wcq;
         }
+
+        const auto gcount = index_t{pp};
+        const auto gsize = ivector(pp,1);
+
+        //tlib::detail::gemm_row::run( b,aa,cc, m,nnq,nq,  nq,nnq,nnq);
+        cblas_dgemm_batch (L,Ta.data(),Ta.data(), Ma.data(),Na.data(),Ka.data(), ALPHAa.data(), (const value_t**)Aa.data(),LDAa.data(), (const value_t**)Ba.data(),LDBa.data(), BETAa.data(), Ca.data(),LDCa.data(), gcount, gsize.data());
+#endif
     }
 }
 
