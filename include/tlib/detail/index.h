@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2019 Cem Bassoy (cem.bassoy@gmail.com)
+ *   Copyright (C) 2024 Cem Bassoy (cem.bassoy@gmail.com)
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Lesser General Public License as published by
@@ -15,8 +15,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef TLIB_DETAIL_INDEX_H
-#define TLIB_DETAIL_INDEX_H
+#pragma once
 
 namespace tlib::detail
 {
@@ -128,5 +127,3 @@ constexpr auto at_at_1(size_type const j_view, container_type const& w_view, con
 
 
 } // namespace detail
-
-#endif// TLIB_DETAIL_INDEX_H

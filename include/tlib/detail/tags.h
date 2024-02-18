@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2019 Cem Bassoy (cem.bassoy@gmail.com)
+ *   Copyright (C) 2024 Cem Bassoy (cem.bassoy@gmail.com)
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Lesser General Public License as published by
@@ -15,8 +15,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef TLIB_DETAIL_POLICIES_H
-#define TLIB_DETAIL_POLICIES_H
+#pragma once
 
 
 namespace tlib::execution
@@ -93,9 +92,3 @@ inline constexpr all_t     all;
 }
 
 
-
-
-
-
-
-#endif

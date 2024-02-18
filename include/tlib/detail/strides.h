@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2019 Cem Bassoy (cem.bassoy@gmail.com)
+ *   Copyright (C) 2024 Cem Bassoy (cem.bassoy@gmail.com)
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Lesser General Public License as published by
@@ -15,8 +15,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef TLIB_DETAIL_STRIDE_H
-#define TLIB_DETAIL_STRIDE_H
+#pragma once
 
 #include <algorithm>
 #include <iterator>
@@ -102,5 +101,3 @@ inline bool is_valid_strides(InputIt1 layout_begin, InputIt1 layout_end, InputIt
 }
 
 } // namespace tlib::detail
-
-#endif // TLIB_STRIDE_H

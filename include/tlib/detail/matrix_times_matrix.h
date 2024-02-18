@@ -1,3 +1,20 @@
+/*
+ *   Copyright (C) 2024 Cem Bassoy (cem.bassoy@gmail.com)
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #pragma once
 
 #include <cstddef>
@@ -12,10 +29,9 @@
 
 
 #include "tags.h"
-#include "cases_ttm.h"
+#include "cases.h"
 
 
-// <cblas.h>
 #ifdef USE_OPENBLAS
 #include <cblas.h>
 #endif
@@ -26,18 +42,6 @@
 
 
 namespace tlib::detail {
-
-/** \brief computes 2d-slice-times-matrix
- *
- * the same as above only using basic linear algebra subroutines
- *
- * \note performs this with blas library
- *
-*/
-
-//enum CBLAS_LAYOUT { CblasRowMajor=101,CblasColMajor=102};
-//enum CBLAS_TRANSPOSE { CblasNoTrans=111, CblasTrans=112};
-
 
 struct cblas_layout {};
 
@@ -115,23 +119,6 @@ public:
 using gemv_row = gemv_blas <cblas_row>;
 using gemv_col = gemv_blas <cblas_col>;
 
-
-inline std::size_t num_elements(std::size_t const*const na, unsigned p)
-{
-	return std::accumulate( na, na+p, 1ull, std::multiplies<>()  );
-}
-
-
-#if 0
-template<class value_t>
-inline void mtm(
-			size_t const m, size_t const p,
-			value_t const*const a, size_t const*const na,     size_t const*const /*wa*/, size_t const*const pia,
-			value_t const*const b, size_t const*const /*nb*/,
-			value_t      *const c, size_t const*const /*nc*/, size_t const*const /*wc*/, size_t const*const /*pic*/
-			);
-#endif 
-
 template<class value_t>
 inline void mtm_rm(
 			unsigned const q, unsigned const p,
@@ -153,20 +140,14 @@ inline void mtm_rm(
 	assert(nc[q-1] == u);
 	assert(nb[1]  == nq);
 	
-	//std::cout << "na0 = " << na[0] << std::endl;
-	//std::cout << "na1 = " << na[1] << std::endl;
-	//std::cout << "nc0 = " << nc[0] << std::endl;
-	//std::cout << "nc1 = " << nc[1] << std::endl;
-	//std::cout << "q = " << q << std::endl;
-	
 	assert(q==0 || std::equal(na,     na+q-1, nc    ));
 	assert(q==p || std::equal(na+q+1, na+p,   nc+q+1));
-	
-  auto nn  = num_elements(na,p) / nq;
+
+    auto nn = std::accumulate( na, na+p, 1ull, std::multiplies<>() ) / nq;
  
 	                                               // A,x,y, m, n, lda
          if(is_case_rm<1>(p,q,pia)) gemv_row::run     (b,a,c, u, m, m  );            // q=1 | A(u,1),C(m,1), B(m,u) = RM       | C = A x1 B => c = B *(rm) a
-                                                 // a,b,c  m, n, k,   lda,ldb,ldc    	     
+                                                    // a,b,c  m, n, k,   lda,ldb,ldc
     else if(is_case_rm<2>(p,q,pia)) gemm_row_tr2::run (a,b,c, n, u, m,   m, m, u );  // q=1     | A(m,n),C(u,n) = CM , B(u,m) = RM | C = A x1 B => C = A *(rm) B'
     else if(is_case_rm<3>(p,q,pia)) gemm_row::run     (b,a,c, u, m, n,   n, m, m );  // q=2     | A(m,n),C(m,u) = CM , B(u,n) = RM | C = A x2 B => C = B *(rm) A
 	

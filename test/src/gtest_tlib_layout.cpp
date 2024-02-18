@@ -1,3 +1,21 @@
+/*
+ *   Copyright (C) 2024 Cem Bassoy (cem.bassoy@gmail.com)
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -150,26 +168,7 @@ TEST_F(LayoutTest, is_valid_layout)
 }
 
 
-TEST_F(LayoutTest, inverse_layout)
-{
-	for(auto order = 1u; order <= 10u; ++order)
-	{
-		auto layout          = layout_t(order,0);
-		auto inverse_layout  = layout_t(order,0);
-		auto inverse_inverse_layout = layout_t(order,0);
-		for(auto format = 1u; format <= order; ++format)
-		{			
-			tlib::detail::compute_k_order_layout(layout.begin(), layout.end(),format);			
-			ASSERT_TRUE(tlib::detail::is_valid_layout(layout.begin(), layout.end()));			
-			tlib::detail::compute_inverse_layout(layout.begin(), layout.end(),inverse_layout.begin());
-			EXPECT_TRUE(tlib::detail::is_valid_layout(inverse_layout.begin(), inverse_layout.end()));
-			tlib::detail::compute_inverse_layout(inverse_layout.begin(), inverse_layout.end(),inverse_inverse_layout.begin());
-			EXPECT_TRUE(tlib::detail::is_valid_layout(inverse_inverse_layout.begin(), inverse_inverse_layout.end()));
-			EXPECT_TRUE ( std::equal(layout.begin(), layout.end(), inverse_inverse_layout.begin()) );
 
-		}
-	}	
-}
 
 TEST_F(LayoutTest, inverse_mode)
 {

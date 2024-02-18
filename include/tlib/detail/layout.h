@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2019 Cem Bassoy (cem.bassoy@gmail.com)
+ *   Copyright (C) 2024 Cem Bassoy (cem.bassoy@gmail.com)
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Lesser General Public License as published by
@@ -15,8 +15,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef TLIB_DETAIL_LAYOUT_H
-#define TLIB_DETAIL_LAYOUT_H
+#pragma once
 
 #include <algorithm>
 #include <iterator>
@@ -97,20 +96,6 @@ inline void compute_last_order_layout(OutputIt begin, OutputIt end)
 	return compute_k_order_layout(begin,end,0u);
 }
 
-template<class InputIt, class OutputIt>
-inline void compute_inverse_layout(InputIt begin, InputIt end, OutputIt output)
-{
-	if(!is_valid_layout(begin,end)) 
-		throw std::runtime_error("Error in tlib::detail::compute_inverse_layout: input layout is not valid!");	
-	
-	unsigned const n = std::distance(begin,end);
-		
-	for(auto r = 1u; r <= n; ++r, ++begin)
-		output[*begin-1] = r;
-}
-
-
-
 // returns the position of the specified one-based mode in the layout vector 
 template<class InputIt, class SizeType>
 inline auto inverse_mode(InputIt layout_begin, InputIt layout_end, SizeType mode )
@@ -138,78 +123,4 @@ inline auto inverse_mode(InputIt layout_begin, InputIt layout_end, SizeType mode
 	return inverse_mode+1;
 }
 
-
-
-
-template<class InputIt, class OutputIt, class ModeType>
-inline void compute_output_layout(InputIt begin, InputIt end, OutputIt begin2, ModeType q)
-{	
-	using value_type = typename std::iterator_traits<InputIt>::value_type;
-	
-	if(!is_valid_layout(begin,end)) 
-		throw std::runtime_error("Error in tlib::detail::compute_inverse_layout: input layout is not valid!");	
-	
-	const auto p_ = std::distance(begin,end);
-	
-	if(p_< 1)
-		throw std::runtime_error("Error in tlib::detail::compute_inverse_layout(): input layout is invalid.");
-	
-	auto const p = static_cast<value_type>(p_);
-
-	
-	if(1u > q || q > p)
-		throw std::runtime_error("Error in tlib::detail::compute_inverse_layout: mode must be greater zero and less than or equal to the order!");	
-	
-	
-	const auto iq = inverse_mode(begin,end, q)-1;
-	assert(0u <= iq && iq < p);	
-	
-	const auto min1 = std::min(iq  ,p-1);
-
-	std::copy(begin   , begin+min1     , begin2);
-	std::copy(begin+iq+1, begin+p        , begin2+iq);
-	std::for_each( begin2, begin2+p-1, [q]( auto& cc ) { if(cc>q) --cc; } );
-
-}
-
-
-template<class SizeType, class ModeType>
-inline auto generate_output_layout(std::vector<SizeType> const& input_layout, ModeType q)
-{
-	if(!is_valid_layout(input_layout.begin(),input_layout.end()))
-		throw std::runtime_error("Error in tlib::detail::generate_output_layout(): input layout is not valid.");
-		
-	if(q==0 || q>input_layout.size())
-		throw std::runtime_error("Error in tlib::detail::generate_output_layout(): constraction mode q should be greater than 0 and less than or equal to the tensor order.");
-
-	auto output_layout = std::vector<SizeType>(input_layout.size()-1);
-	compute_output_layout(input_layout.begin(), input_layout.end(), output_layout.begin(), q);
-	
-	assert(is_valid_layout(output_layout.begin(), output_layout.end()));
-	
-	return output_layout;
-}
-
-template<class SizeType, class ModeType, std::size_t N>
-inline auto generate_output_layout(std::array<SizeType,N> const& input_layout, ModeType q)
-{
-	if(!is_valid_shape(input_layout.begin(),input_layout.end()))
-		throw std::runtime_error("Error in tlib::detail::generate_output_layout(): input layout is not valid.");
-		
-	if(q==0 || q>N)
-		throw std::runtime_error("Error in tlib::detail::generate_output_layout(): constraction mode q should be greater than 0 and less than or equal to the tensor order.");
-
-	auto output_layout = std::array<SizeType,N-1>{};
-	compute_output_layout(input_layout.begin(), input_layout.end(), output_layout.begin(), q);
-	
-	assert(is_valid_layout(output_layout.begin(), output_layout.end()));
-	
-	return output_layout;
-}
-
-
-
 } // namespace tlib::detail
-
-
-#endif // TLIB_LAYOUT_H

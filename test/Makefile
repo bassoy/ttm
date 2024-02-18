@@ -1,5 +1,5 @@
 CXX :=g++
-#CXX :=clang++
+CXX :=clang++
 
 # -DUSE_OPENBLAS 
 # -DUSE_MLKBLAS
