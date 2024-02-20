@@ -293,6 +293,8 @@ inline void ttm(
         auto nq     = na[q-1];
         auto n1     = na[pia[0]-1];
         auto wq     = wa[q-1];
+        
+        omp_set_num_threads(std::thread::hardware_concurrency());
 
         #pragma omp parallel for schedule(dynamic) collapse(2) firstprivate(p,q,qh,outer,inner,wai,wci,wao,wco,wq,n1,a,b,c)
         for(size_t k = 0u; k < outer; ++k){
@@ -367,6 +369,8 @@ inline void ttm(
 
         auto m      = nc[q-1];
         auto nq     = na[q-1];
+        
+        omp_set_num_threads(std::thread::hardware_concurrency()*2);
 
         #pragma omp parallel for schedule(dynamic) firstprivate(p, q, qh, m,nnq, num, waq,wcq, a,b,c)
         for(size_t k = 0u; k < num; ++k){
@@ -389,17 +393,14 @@ inline void ttm(
         value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
-
+    set_blas_threads(std::thread::hardware_concurrency()*2);
     if(!is_case_rm<8>(p,q,pia)){
-        set_blas_threads(std::thread::hardware_concurrency());
         mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
     }
     else {
         assert(is_case_rm<8>(p,q,pia));
         assert(q>0);
         assert(p>2);
-
-        set_blas_threads(1);
 
         auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
 
@@ -449,7 +450,11 @@ inline void ttm(
         const auto gsize = ivector(pp,1);
 
         //tlib::detail::gemm_row::run( b,aa,cc, m,nnq,nq,  nq,nnq,nnq);
-        cblas_dgemm_batch (L,Ta.data(),Ta.data(), Ma.data(),Na.data(),Ka.data(), ALPHAa.data(), (const value_t**)Aa.data(),LDAa.data(), (const value_t**)Ba.data(),LDBa.data(), BETAa.data(), Ca.data(),LDCa.data(), gcount, gsize.data());
+
+        if constexpr (std::is_same_v<value_t,double>)
+                cblas_dgemm_batch (L,Ta.data(),Ta.data(), Ma.data(),Na.data(),Ka.data(), ALPHAa.data(), (const value_t**)Aa.data(),LDAa.data(), (const value_t**)Ba.data(),LDBa.data(), BETAa.data(), Ca.data(),LDCa.data(), gcount, gsize.data());
+        else
+                cblas_sgemm_batch (L,Ta.data(),Ta.data(), Ma.data(),Na.data(),Ka.data(), ALPHAa.data(), (const value_t**)Aa.data(),LDAa.data(), (const value_t**)Ba.data(),LDBa.data(), BETAa.data(), Ca.data(),LDCa.data(), gcount, gsize.data());
 #endif
     }
 }
