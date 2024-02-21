@@ -24,9 +24,6 @@
 #include <algorithm>
 #include <iostream>
 
-#include <omp.h>
-
-
 
 #include "tags.h"
 #include "cases.h"

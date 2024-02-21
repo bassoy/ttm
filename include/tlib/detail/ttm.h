@@ -43,6 +43,9 @@
 #endif
 
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 
 namespace tlib::detail{
@@ -57,6 +60,37 @@ inline void set_blas_threads(size_t num)
 	mkl_set_num_threads(num);
 #endif
 }
+
+
+static const auto hwthreads = std::thread::hardware_concurrency();
+
+static inline void set_blas_threads_max()
+{
+  set_blas_threads(hwthreads); 
+}
+
+static inline void set_blas_threads_min()
+{
+  set_blas_threads(1);
+}
+
+
+template<class size_t>
+inline void set_omp_threads(size_t num)
+{
+#ifdef _OPENMP
+  omp_set_num_threads(num);
+#endif
+}
+
+
+static inline void set_omp_threads_max()
+{
+#ifdef _OPENMP
+  omp_set_num_threads(hwthreads);
+#endif
+}
+
 
 /* @brief Computes number of elements between modes start and finish
  *
@@ -80,6 +114,8 @@ inline auto product(size_t const*const n, size_t const*const pi, unsigned start,
 
     return nn;
 }
+
+
 
 
 
@@ -192,7 +228,7 @@ inline void ttm(
                   value_t *c, size_t const*const nc, size_t const*const wc
 			)
 {
-    set_blas_threads(std::thread::hardware_concurrency());
+    set_blas_threads_max();
 
     if(!is_case_rm<8>(p,q,pia)){
         mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
@@ -218,15 +254,13 @@ inline void ttm(
 {
 
     if(!is_case_rm<8>(p,q,pia)){
-		set_blas_threads(std::thread::hardware_concurrency());
-        mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+  		set_blas_threads_max();
+      mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
 	}
 	else {
         assert(is_case_rm<8>(p,q,pia));
         assert(p>2);
         assert(q>0);
-
-		set_blas_threads(1);
 
         auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
 
@@ -239,7 +273,10 @@ inline void ttm(
 
         auto gemm = tlib::detail::gemm_row::run<value_t>;
 
-        #pragma omp parallel for schedule(dynamic) firstprivate(p,q,qh,num,a,b,c)
+        set_blas_threads_min();        
+        set_omp_threads_max();
+
+        #pragma omp parallel for schedule(dynamic) firstprivate(p,q,qh,num,na,wa,pia,nc,wc,a,b,c)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
@@ -263,15 +300,13 @@ inline void ttm(
 {
 
     if(!is_case_rm<8>(p,q,pia)){
-        set_blas_threads(std::thread::hardware_concurrency());
+        set_blas_threads_max();
         mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
     }
     else {
         assert(is_case_rm<8>(p,q,pia));
         assert(p>2);
         assert(q>0);
-
-        set_blas_threads(1);
 
         auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
 
@@ -293,10 +328,11 @@ inline void ttm(
         auto nq     = na[q-1];
         auto n1     = na[pia[0]-1];
         auto wq     = wa[q-1];
-        
-        omp_set_num_threads(std::thread::hardware_concurrency());
 
-        #pragma omp parallel for schedule(dynamic) collapse(2) firstprivate(p,q,qh,outer,inner,wai,wci,wao,wco,wq,n1,a,b,c)
+        set_blas_threads_min();        
+        set_omp_threads_max();
+
+        #pragma omp parallel for schedule(dynamic) collapse(2) firstprivate(outer,inner,wai,wci,wao,wco,wq,m,n1,nq,a,b,c)
         for(size_t k = 0u; k < outer; ++k){
             for(size_t j = 0u; j < inner; ++j){
                 auto aa = a+k*wao + j*wai;
@@ -319,7 +355,7 @@ inline void ttm(
                   value_t *c, size_t const*const nc, size_t const*const wc
             )
 {
-    set_blas_threads(std::thread::hardware_concurrency());
+    set_blas_threads_max();
 
     if(!is_case_rm<8>(p,q,pia)){
         mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
@@ -345,15 +381,13 @@ inline void ttm(
 {
 
     if(!is_case_rm<8>(p,q,pia)){
-        set_blas_threads(std::thread::hardware_concurrency());
+        set_blas_threads_max();
         mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
     }
     else {
         assert(is_case_rm<8>(p,q,pia));
         assert(q>0);
         assert(p>2);
-
-        set_blas_threads(1);
 
         auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
 
@@ -370,9 +404,10 @@ inline void ttm(
         auto m      = nc[q-1];
         auto nq     = na[q-1];
         
-        omp_set_num_threads(std::thread::hardware_concurrency()*2);
+        set_blas_threads_min();
+        set_omp_threads_max();
 
-        #pragma omp parallel for schedule(dynamic) firstprivate(p, q, qh, m,nnq, num, waq,wcq, a,b,c)
+        #pragma omp parallel for schedule(dynamic) firstprivate(p, q, qh, m,nnq, nq, num, waq,wcq, a,b,c)
         for(size_t k = 0u; k < num; ++k){
 
             auto aa = a+k*waq;
@@ -393,7 +428,8 @@ inline void ttm(
         value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
-    set_blas_threads(std::thread::hardware_concurrency()*2);
+    set_blas_threads_max();
+    
     if(!is_case_rm<8>(p,q,pia)){
         mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
     }
