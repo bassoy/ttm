@@ -147,6 +147,10 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
     auto sp = slicing_policy();
     auto fp = fusion_policy();
 
+    auto cm = std::vector{1ul,2ul};
+    auto rm = std::vector{2ul,1ul};
+
+
 
     for(auto const& na : shapes)
     {
@@ -196,18 +200,43 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
                 auto pic = pia; // tlib::detail::generate_output_layout(pia,q);
                 auto nc  = na; // tlib::detail::generate_output_shape (na ,q);
                 nc.at(q-1) = m;
+                auto wa  = tlib::detail::generate_strides(na,pia);
                 auto wc  = tlib::detail::generate_strides(nc,pic);
                 auto nnc = std::accumulate(nc.begin(),nc.end(), 1ul, std::multiplies<size_type>());
                 auto c = std::vector(nnc,value_type{});
 
-                auto A = tlib::gtest::tensor(na,a,pia);
-                auto B = tlib::gtest::matrix(nb,b,{2,1});
 
 
                 auto qh = tlib::detail::inverse_mode(pia.begin(), pia.end(), q);
 
 
-                auto wa = A.w();
+                {
+                    tlib::tensor_times_matrix(ep,sp,fp,  q,p,
+                                              a.data(), na.data(), wa.data(), pia.data(),
+                                              b.data(), nb.data(), rm.data(),
+                                              c.data(), nc.data(), wc.data());
+                    bool test = ttm_check(p,q,qh, 0u,0u,
+                                          a, na, wa, pia,
+                                          c, nc, wc, pic);
+                    EXPECT_TRUE(test);
+                }
+
+
+                {
+                    tlib::tensor_times_matrix(ep,sp,fp,  q,p,
+                                              a.data(), na.data(), wa.data(), pia.data(),
+                                              b.data(), nb.data(), cm.data(),
+                                              c.data(), nc.data(), wc.data());
+                    bool test = ttm_check(p,q,qh, 0u,0u,
+                                          a, na, wa, pia,
+                                          c, nc, wc, pic);
+                    EXPECT_TRUE(test);
+                }
+
+//                auto A = tlib::gtest::tensor(na,a,pia);
+//                auto B = tlib::gtest::matrix(nb,b,rm);
+//                auto C = tlib::gtest::tensor(nc,c,pic);
+
 //                std::cout << "q=" << q << ", qh=" << qh << std::endl;
 //                std::cout << "na = [ "; std::copy(na.begin(), na.end(), std::ostream_iterator<value_type>(std::cout, " ")); std::cout <<"];" << std::endl;
 //                std::cout << "nc = [ "; std::copy(nc.begin(), nc.end(), std::ostream_iterator<value_type>(std::cout, " ")); std::cout <<"];" << std::endl;
@@ -215,25 +244,16 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
 //                std::cout << "wc = [ "; std::copy(wc.begin(), wc.end(), std::ostream_iterator<value_type>(std::cout, " ")); std::cout <<"];" << std::endl;
 //                std::cout << "A = " << A << std::endl;
 //                std::cout << "B = " << B << std::endl;
-
-                tlib::tensor_times_matrix(ep,sp,fp,  q,p,
-                                          a.data(), na.data(), wa.data(), pia.data(),
-                                          b.data(), nb.data(),
-                                          c.data(), nc.data(), wc.data());
-
-//                auto C = tlib::gtest::tensor(nc,c,pic);
 //                std::cout << "C = " << C << std::endl;
 
-                bool test = ttm_check(p,q,qh, 0u,0u,
-                          a, na, wa, pia,
-                          c, nc, wc, pic);
 
-                EXPECT_TRUE(test);
+
+
 
             } // 1<=q<=p
             // break;
         } // layouts
-        // break;
+         // break;
     } // shapes
 }
 

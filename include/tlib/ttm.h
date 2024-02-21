@@ -56,7 +56,7 @@ inline void tensor_times_matrix(
     parallel_policy ep, slicing_policy sp, fusion_policy fp,
     unsigned const q, unsigned const p,
     const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-    const value_t *b, size_t const*const nb,
+    const value_t *b, size_t const*const nb ,size_t const*const pib,
     value_t       *c, size_t const*const nc, size_t const*const wc
 	)
 {
@@ -88,7 +88,7 @@ inline void tensor_times_matrix(
     if(!detail::is_valid_strides(pia,pia+p, wa)) throw std::runtime_error("Error in tlib::tensor_times_matrix: stride vector of A is not valid.");
     if(!detail::is_valid_strides(pia,pia+p, wc)) throw std::runtime_error("Error in tlib::tensor_times_matrix: stride vector of C is not valid.");
 
-    detail::ttm(ep,sp,fp,  q,p, a,na,wa,pia, b,nb, c,nc,wc);
+    detail::ttm(ep,sp,fp,  q,p, a,na,wa,pia, b,nb, pib, c,nc,wc);
 }
 
 
@@ -115,7 +115,7 @@ inline auto tensor_times_matrix(
 
     tensor_times_matrix( ep, sp, fp, q, p,
 		a.data().data(), a.shape().data(), a.strides().data(), a.layout().data(),
-		b.data().data(), b.shape().data(),
+        b.data().data(), b.shape().data(), b.layout().data(),
 		c.data().data(), c.shape().data(), c.strides().data(), c.layout().data());
 		
 	return c;

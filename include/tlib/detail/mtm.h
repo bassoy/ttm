@@ -128,7 +128,7 @@ inline void mtm_rm(
 	
 	assert(q>0);
 	assert(p>0);	
-	assert(!is_case_rm<8>(p,q,pia));
+    assert(!is_case<8>(p,q,pia));
 	
 	auto m  = na[0];
 	auto n  = na[1];
@@ -143,19 +143,62 @@ inline void mtm_rm(
 
     auto nn = std::accumulate( na, na+p, 1ull, std::multiplies<>() ) / nq;
  
-	                                               // A,x,y, m, n, lda
-         if(is_case_rm<1>(p,q,pia)) gemv_row::run     (b,a,c, u, m, m  );            // q=1 | A(u,1),C(m,1), B(m,u) = RM       | C = A x1 B => c = B *(rm) a
+	                                                  // A,x,y, m, n, lda
+         if(is_case<1>(p,q,pia)) gemv_row::run     (b,a,c, u, m, m  );            // q=1     | A(u,1),C(m,1), B(m,u) = RM       | C = A x1 B => c = B *(rm) a
                                                     // a,b,c  m, n, k,   lda,ldb,ldc
-    else if(is_case_rm<2>(p,q,pia)) gemm_row_tr2::run (a,b,c, n, u, m,   m, m, u );  // q=1     | A(m,n),C(u,n) = CM , B(u,m) = RM | C = A x1 B => C = A *(rm) B'
-    else if(is_case_rm<3>(p,q,pia)) gemm_row::run     (b,a,c, u, m, n,   n, m, m );  // q=2     | A(m,n),C(m,u) = CM , B(u,n) = RM | C = A x2 B => C = B *(rm) A
+    else if(is_case<2>(p,q,pia)) gemm_row_tr2::run (a,b,c, n, u, m,   m, m, u );  // q=1     | A(m,n),C(u,n) = CM , B(u,m)  = RM | C = A x1 B => C = A *(rm) B'
+    else if(is_case<3>(p,q,pia)) gemm_row::run     (b,a,c, u, m, n,   n, m, m );  // q=2     | A(m,n),C(m,u) = CM , B(u,n)  = RM | C = A x2 B => C = B *(rm) A
 	
-    else if(is_case_rm<4>(p,q,pia)) gemm_row::run     (b,a,c, u, n, m,   m, n, n );  // q=1     | A(m,n),C(u,n) = RM , B(u,m) = RM | C = A x1 B => C = B *(rm) A
-    else if(is_case_rm<5>(p,q,pia)) gemm_row_tr2::run (a,b,c, m, u, n,   n, n, u );  // q=2     | A(m,n),C(m,u) = RM , B(u,n) = RM | C = A x2 B => C = A *(rm) B'
+    else if(is_case<4>(p,q,pia)) gemm_row::run     (b,a,c, u, n, m,   m, n, n );  // q=1     | A(m,n),C(u,n) = RM , B(u,m)  = RM | C = A x1 B => C = B *(rm) A
+    else if(is_case<5>(p,q,pia)) gemm_row_tr2::run (a,b,c, m, u, n,   n, n, u );  // q=2     | A(m,n),C(m,u) = RM , B(u,n)  = RM | C = A x2 B => C = A *(rm) B'
 	
-    else if(is_case_rm<6>(p,q,pia)) gemm_row_tr2::run (a,b,c, nn,u,nq,   nq,nq, u);  // q=pi(1) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
-    else if(is_case_rm<7>(p,q,pia)) gemm_row::run     (b,a,c, u,nn,nq,   nq,nn,nn);  // q=pi(p) | A(nq,nn),C(u,nn)   , B(u,nq) = RM | C = A xq B => C = B *(rm) A
+    else if(is_case<6>(p,q,pia)) gemm_row_tr2::run (a,b,c, nn,u,nq,   nq,nq, u);  // q=pi(1) | A(nn,nq),C(nn,u)   , B(u,nq) = RM | C = A xq B => C = A *(rm) B'
+    else if(is_case<7>(p,q,pia)) gemm_row::run     (b,a,c, u,nn,nq,   nq,nn,nn);  // q=pi(p) | A(nq,nn),C(u,nn)   , B(u,nq) = RM | C = A xq B => C = B *(rm) A
 	
 }  
+
+
+
+template<class value_t>
+inline void mtm_cm(
+			unsigned const q, unsigned const p,
+            const value_t *a, std::size_t const*const na, std::size_t const*const pia,
+            const value_t *b, std::size_t const*const nb, // is a column-major dense matrix
+                  value_t *c, std::size_t const*const nc )
+{
+
+	
+	assert(q>0);
+	assert(p>0);	
+    assert(!is_case<8>(p,q,pia));
+	
+	auto m  = na[0];
+	auto n  = na[1];
+	auto nq = na[q-1];
+	auto u  = nb[0];
+
+	assert(nc[q-1] == u);
+	assert(nb[1]  == nq);
+	
+	assert(q==0 || std::equal(na,     na+q-1, nc    ));
+	assert(q==p || std::equal(na+q+1, na+p,   nc+q+1));
+
+    auto nn = std::accumulate( na, na+p, 1ull, std::multiplies<>() ) / nq;
+ 
+    //                                                 A,x,y, m, n, lda
+         if(is_case<1>(p,q,pia)) gemv_col::run     (b,a,c, u, m, u  );            // q=1     | A(u,1),C(m,1), B(m,u) = CM        | C = A x1 B => c = B *(cm) a
+                                                    // a,b,c  m, n, k,   lda,ldb,ldc
+    else if(is_case<2>(p,q,pia)) gemm_col::run     (b,a,c, u, n, m,   u, m, u );  // q=1     | A(m,n),C(u,n) = CM , B(u,m) = CM  | C = A x1 B => C = B *(cm) A
+    else if(is_case<3>(p,q,pia)) gemm_col_tr2::run (a,b,c, m, u, n,   m, u, m );  // q=2     | A(m,n),C(m,u) = CM , B(u,n) = CM  | C = A x2 B => C = A *(cm) B'
+	
+    else if(is_case<4>(p,q,pia)) gemm_col_tr2::run (a,b,c, n, u, m,   n, u, n );  // q=1     | A(m,n),C(u,n) = RM , B(u,m) = CM  | C = A x1 B => C = A *(cm) B'
+    else if(is_case<5>(p,q,pia)) gemm_col::run     (b,a,c, u, m, n,   u, n, u );  // q=2     | A(m,n),C(m,u) = RM , B(u,n) = CM  | C = A x2 B => C = B *(cm) A
+	
+    else if(is_case<6>(p,q,pia)) gemm_col::run     (b,a,c, u,nn,nq,    u,nq, u);  // q=pi(1) | A(nn,nq),C(nn,u)   , B(u,nq) = CM | C = A xq B => C = B *(cm) A
+    else if(is_case<7>(p,q,pia)) gemm_col_tr2::run (a,b,c, nn,u,nq,   nn, u,nn);  // q=pi(p) | A(nq,nn),C(u,nn)   , B(u,nq) = CM | C = A xq B => C = A *(cm) B'
+	
+}  
+
 
 
 

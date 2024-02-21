@@ -62,6 +62,11 @@ TEST_F(LayoutTest, generate_1_order)
 		ASSERT_TRUE (layouts[i].size() == ref_layouts[i].size());
 		EXPECT_TRUE (std::equal(layouts[i].begin(),layouts[i].end(),ref_layouts[i].begin()));
 		EXPECT_TRUE (tlib::detail::is_valid_layout(layouts[i].begin(), layouts[i].end()));	
+
+        EXPECT_TRUE (tlib::detail::is_first_order(layouts[i].begin(), layouts[i].end()));
+        if(i>0){
+            EXPECT_TRUE (!tlib::detail::is_last_order(layouts[i].begin(), layouts[i].end()));
+        }
 	}
 }
 
@@ -82,6 +87,12 @@ TEST_F(LayoutTest, generate_2_order)
 		ASSERT_TRUE (layouts[i].size() == ref_layouts[i].size());
 		EXPECT_TRUE (std::equal(layouts[i].begin(),layouts[i].end(),ref_layouts[i].begin()));
 		EXPECT_TRUE (tlib::detail::is_valid_layout(layouts[i].begin(), layouts[i].end()));
+        if(i>0){
+            EXPECT_TRUE (!tlib::detail::is_first_order(layouts[i].begin(), layouts[i].end()));
+        }
+        if(i==1){
+            EXPECT_TRUE (tlib::detail::is_last_order(layouts[i].begin(), layouts[i].end()));
+        }
 	}
 }
 
@@ -102,6 +113,16 @@ TEST_F(LayoutTest, generate_3_order)
 		ASSERT_TRUE (layouts[i].size() == ref_layouts[i].size());
 		EXPECT_TRUE (std::equal(layouts[i].begin(),layouts[i].end(),ref_layouts[i].begin()));		
 		EXPECT_TRUE (tlib::detail::is_valid_layout(layouts[i].begin(), layouts[i].end()));
+        if(i>0){
+            EXPECT_TRUE (!tlib::detail::is_first_order(layouts[i].begin(), layouts[i].end()));
+        }
+        if(i==1 || i == 2){
+            EXPECT_TRUE (tlib::detail::is_last_order(layouts[i].begin(), layouts[i].end()));
+        }
+        if(i==3) {
+            EXPECT_TRUE (!tlib::detail::is_last_order(layouts[i].begin(), layouts[i].end()));
+        }
+
 	}
 }
 
@@ -128,6 +149,10 @@ TEST_F(LayoutTest, generate_4_order)
 		ASSERT_TRUE (layouts[i].size() == ref_layouts[i].size());
 		EXPECT_TRUE (std::equal(layouts[i].begin(),layouts[i].end(),ref_layouts[i].begin()));
 		EXPECT_TRUE (tlib::detail::is_valid_layout(layouts[i].begin(), layouts[i].end()));
+        if(i>0) {
+            EXPECT_TRUE (!tlib::detail::is_first_order(layouts[i].begin(), layouts[i].end()));
+        }
+        EXPECT_TRUE (tlib::detail::is_last_order(layouts[i].begin(), layouts[i].end()));
 	}
 }
 

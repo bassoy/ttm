@@ -83,6 +83,26 @@ inline auto generate_k_order_layout(size_t p, size_t k)
 	return v;
 }
 
+template<class InputIt>
+inline bool is_first_order(InputIt begin, InputIt end)
+{
+    using value_type = typename std::iterator_traits<InputIt>::value_type;
+
+    auto n = value_type(1);
+    return std::all_of(begin,end,[&n](auto o){ return o == n++;});
+}
+
+template<class InputIt>
+inline bool is_last_order(InputIt begin, InputIt end)
+{
+    using value_type = typename std::iterator_traits<InputIt>::value_type;
+
+    auto p = value_type(std::distance(begin,end));
+    return std::all_of(begin,end,[&p](auto o){ return o == p--;});
+}
+
+
+
 
 template<class OutputIt>
 inline void compute_first_order_layout(OutputIt begin, OutputIt end)
@@ -110,7 +130,7 @@ inline auto inverse_mode(InputIt layout_begin, InputIt layout_end, SizeType mode
 		
 	auto const p = static_cast<value_type>(p_);
 	
-	if(mode==0u || mode > p)
+    if(mode==0u || mode > SizeType(p))
 		throw std::runtime_error("Error in tlib::detail::inverse_mode(): mode should be one-based and equal to or less than layout size.");
 	
 	auto inverse_mode = value_type{0u};
