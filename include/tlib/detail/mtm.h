@@ -34,8 +34,8 @@
 #endif
 
 #ifdef USE_MKLBLAS
-#include <mkl/mkl.h>
-#include <mkl/mkl_cblas.h>
+#include <mkl.h>
+#include <mkl_cblas.h>
 #endif
 
 

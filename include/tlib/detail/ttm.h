@@ -38,8 +38,8 @@
 #endif
 
 #ifdef USE_MKLBLAS
-#include <mkl/mkl.h>
-#include <mkl/mkl_cblas.h>
+#include <mkl.h>
+#include <mkl_cblas.h>
 #endif
 
 
@@ -61,15 +61,24 @@ inline void set_blas_threads(size_t num)
 #endif
 }
 
+static inline unsigned get_blas_threads()
+{
+#ifdef USE_OPENBLAS
+    return openblas_get_max_threads();
+#elif defined USE_MKLBLAS
+    return mkl_get_max_threads();
+#endif
+}
+
 
 static const auto hwthreads = std::thread::hardware_concurrency();
 
-static inline void set_blas_threads_max()
+inline void set_blas_threads_max()
 {
   set_blas_threads(hwthreads); 
 }
 
-static inline void set_blas_threads_min()
+inline void set_blas_threads_min()
 {
   set_blas_threads(1);
 }
@@ -84,10 +93,19 @@ inline void set_omp_threads(size_t num)
 }
 
 
-static inline void set_omp_threads_max()
+inline void set_omp_threads_max()
 {
 #ifdef _OPENMP
   omp_set_num_threads(hwthreads);
+#endif
+}
+
+inline unsigned get_omp_threads()
+{
+#ifdef _OPENMP
+    return omp_get_num_threads();
+#else
+    return 1;
 #endif
 }
 
@@ -147,13 +165,7 @@ inline void multiple_gemm_with_slices (
 		}
 	}
 	else {
-//        auto n1     = na[pia[0]-1];
-//        auto m      = nc[q-1];
-//        auto nq     = na[q-1];
-//        auto wq     = wa[q-1];
         gemm( a, b, c );
-
-//        gemm( b,a,c, m,n1,nq,  nq,wq,wq);  // ... m,n1,nq,   nq, n1, n1
 	}
 }
 
@@ -169,9 +181,7 @@ template<class value_t, class size_t, class gemm_t>
 inline void multiple_gemm_with_subtensors (
         gemm_t && gemm,
         unsigned const r, // starts with p
-//        unsigned const q,
         unsigned const qh, // qhat one-based
-//        unsigned const nnq, // prod_{k=1}^{qh-1} n_{pi_k}
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b,
               value_t *c, size_t const*const nc, size_t const*const wc
@@ -189,9 +199,6 @@ inline void multiple_gemm_with_subtensors (
         }
     }
     else {
-//        auto m      = nc[q-1];
-//        auto nq     = na[q-1];
-//        gemm( b,a,c, m,nnq,nq,  nq,nnq,nnq);
         gemm(a,b,c);
 	}
 }
@@ -230,6 +237,7 @@ inline void ttm(
 			)
 {
     set_blas_threads_max();
+    assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
 
     auto is_cm = pib[0] == 1;
 
@@ -248,8 +256,6 @@ inline void ttm(
         auto m      = nc[q-1];
         auto nq     = na[q-1];
         auto wq     = wa[q-1];
-
-//        auto gemm = is_cm ?
 
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
@@ -274,6 +280,7 @@ inline void ttm(
 
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
+        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -303,20 +310,18 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq,m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
-        set_blas_threads_min();        
-        set_omp_threads_max();
 
-
-#pragma omp parallel for schedule(dynamic) firstprivate(qh,num,na,wa,pia,nc,wc,a,b,c,gemm_col, gemm_row, is_cm)
+#pragma omp parallel for schedule(dynamic) num_threads(hwthreads) firstprivate(qh,num,na,wa,pia,nc,wc,a,b,c,gemm_col, gemm_row, is_cm)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
 
+            set_blas_threads_min();
+            assert(get_omp_threads()==hwthreads);
+            assert(get_blas_threads()==1);
+
             if(is_cm) multiple_gemm_with_slices(gemm_col, qh, qh,  aa,na,wa,pia,   b,  cc,nc,wc);
             else      multiple_gemm_with_slices(gemm_row, qh, qh,  aa,na,wa,pia,   b,  cc,nc,wc);
-
-
-//            multiple_gemm_with_slices (is_cm ? gemm_col : gemm_row, qh, qh,  aa,na,wa,pia,  b,  cc,nc,wc );
         }
 	}
 }
@@ -333,10 +338,12 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
+    // mkl_set_dynamic(1);
     auto is_cm = pib[0] == 1;
 
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
+        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -371,18 +378,18 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
-        set_blas_threads_min();        
-        set_omp_threads_max();
-
-#pragma omp parallel for schedule(dynamic) collapse(2) firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
+#pragma omp parallel for schedule(dynamic) collapse(2) num_threads(hwthreads) firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
         for(size_t k = 0u; k < outer; ++k){
             for(size_t j = 0u; j < inner; ++j){
                 auto aa = a+k*wao + j*wai;
                 auto cc = c+k*wco + j*wci;
 
+                set_blas_threads_min();
+                assert(get_omp_threads ()==hwthreads);
+                assert(get_blas_threads()==1);
+
                 if(is_cm) gemm_col(aa, b, cc);
                 else      gemm_row(aa, b, cc);
-                //tlib::detail::gemm_row::run( b,aa,cc, m,n1,nq,  nq,wq,wq);
             }
         }
     }
@@ -401,7 +408,9 @@ inline void ttm(
 {
     auto is_cm = pib[0] == 1;
 
+    // mkl_set_dynamic(1);
     set_blas_threads_max();
+    assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
 
     if(!is_case<8>(p,q,pia)){
         if(is_cm)
@@ -411,13 +420,10 @@ inline void ttm(
     }
     else {
         auto const qh  = tlib::detail::inverse_mode(pia, pia+p, q);
-        // nnq = na[pi[1]] * na[pi[2]] * ... * na[pi[qh-1]]
         auto const nnq = product(na, pia, 1, qh);
         auto const m   = nc[q-1];
         auto const nq  = na[q-1];
 
-//        gemm( b,a,c, m,nnq,nq,  nq,nnq,nnq);
-//        auto gemm = tlib::detail::gemm_row::run<value_t>;
 
         using namespace std::placeholders;
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
@@ -426,7 +432,6 @@ inline void ttm(
         if(is_cm) multiple_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
         else      multiple_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
 
-//        multiple_gemm_with_subtensors(is_cm ? gemm_col : gemm_row, p, qh, a,na,wa,pia,   b,  c,nc,wc);
     }
 }
 
@@ -439,10 +444,12 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
+    // mkl_set_dynamic(1);
     auto is_cm = pib[0] == 1;
 
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
+        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -472,19 +479,16 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
         
-        set_blas_threads_min();
-        set_omp_threads_max();
-
-        #pragma omp parallel for schedule(dynamic) firstprivate(num, waq,wcq, a,b,c, gemm_col, gemm_row, is_cm)
+#pragma omp parallel for schedule(dynamic) num_threads(hwthreads) firstprivate(num, waq,wcq, a,b,c, gemm_col, gemm_row, is_cm)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
 
+            set_blas_threads_min();
+            assert(get_omp_threads ()==hwthreads);
+            assert(get_blas_threads()==1);
             if(is_cm) gemm_col(aa, b, cc);
             else      gemm_row(aa, b, cc);
-
-
-//            tlib::detail::gemm_row::run( b,aa,cc, m,nnq,nq,  nq,nnq,nnq);
         }
     }
 }
@@ -501,7 +505,9 @@ inline void ttm(
 {
     auto is_cm = pib[0] == 1;
 
+    // mkl_set_dynamic(1);
     set_blas_threads_max();
+    assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
     
     if(!is_case<8>(p,q,pia)){
         if(is_cm)
@@ -517,7 +523,7 @@ inline void ttm(
         auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
-        auto const pp = product(na, pia, qh+1,p+1);
+        auto pp = product(na, pia, qh+1,p+1);
 
         // w[pi[q]]  = 1 * n[pi[1]] * n[pi[2]] * ... * n[pi[qh-1]]
         auto const waq = wa[pia[qh]-1];
@@ -538,7 +544,6 @@ inline void ttm(
         const auto L =  is_cm ? CblasColMajor : CblasRowMajor;
         const auto Ta = std::vector<CBLAS_TRANSPOSE>(pp,CblasNoTrans);
         const auto Tb = std::vector<CBLAS_TRANSPOSE>(pp,is_cm ? CblasTrans : CblasNoTrans);
-
 
 //        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
 //        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
@@ -567,12 +572,12 @@ inline void ttm(
         const auto gcount = index_t(pp);
         const auto gsize  = ivector(pp,1);
 
-        //tlib::detail::gemm_row::run( b,aa,cc, m,nnq,nq,  nq,nnq,nnq);
-
-        if constexpr (std::is_same_v<value_t,double>)
-                cblas_dgemm_batch (L,Ta.data(),Tb.data(), Ma.data(),Na.data(),Ka.data(), ALPHAa.data(), (const value_t**)Aa.data(),LDAa.data(), (const value_t**)Ba.data(),LDBa.data(), BETAa.data(), Ca.data(),LDCa.data(), gcount, gsize.data());
-        else
-                cblas_sgemm_batch (L,Ta.data(),Tb.data(), Ma.data(),Na.data(),Ka.data(), ALPHAa.data(), (const value_t**)Aa.data(),LDAa.data(), (const value_t**)Ba.data(),LDBa.data(), BETAa.data(), Ca.data(),LDCa.data(), gcount, gsize.data());
+        if constexpr (std::is_same_v<value_t,double>){
+            cblas_dgemm_batch (L,Ta.data(),Tb.data(), Ma.data(),Na.data(),Ka.data(), ALPHAa.data(), (const value_t**)Aa.data(),LDAa.data(), (const value_t**)Ba.data(),LDBa.data(), BETAa.data(), Ca.data(),LDCa.data(), gcount, gsize.data());
+        }
+        else{
+            cblas_sgemm_batch (L,Ta.data(),Tb.data(), Ma.data(),Na.data(),Ka.data(), ALPHAa.data(), (const value_t**)Aa.data(),LDAa.data(), (const value_t**)Ba.data(),LDBa.data(), BETAa.data(), Ca.data(),LDCa.data(), gcount, gsize.data());
+        }
 #endif
     }
 }
