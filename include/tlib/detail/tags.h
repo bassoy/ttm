@@ -60,6 +60,7 @@ namespace tlib::parallel_policy
 struct threaded_gemm_t  {}; // multithreaded gemm
 struct omp_taskloop_t   {}; // omp_taskloops with single threaded gemm
 struct omp_forloop_t    {}; // omp_for with single threaded gemm
+struct omp_forloop_and_threaded_gemm_t  {}; // omp_for with multi-threaded gemm
 struct batched_gemm_t   {}; // multithreaded batched gemm with collapsed loops
 
 inline constexpr threaded_gemm_t  threaded_gemm;
