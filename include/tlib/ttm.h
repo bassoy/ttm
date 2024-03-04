@@ -52,11 +52,11 @@ namespace tlib
  *
 */
 template<class value_t, class size_t, class parallel_policy, class slicing_policy, class fusion_policy>
-inline void tensor_times_matrix(
+inline void ttm(
     parallel_policy ep, slicing_policy sp, fusion_policy fp,
     unsigned const q, unsigned const p,
     const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-    const value_t *b, size_t const*const nb ,size_t const*const pib,
+    const value_t *b, size_t const*const nb ,                       size_t const*const pib,
     value_t       *c, size_t const*const nc, size_t const*const wc
 	)
 {
@@ -88,18 +88,24 @@ inline void tensor_times_matrix(
     if(!detail::is_valid_strides(pia,pia+p, wa)) throw std::runtime_error("Error in tlib::tensor_times_matrix: stride vector of A is not valid.");
     if(!detail::is_valid_strides(pia,pia+p, wc)) throw std::runtime_error("Error in tlib::tensor_times_matrix: stride vector of C is not valid.");
 
-    detail::ttm(ep,sp,fp,  q,p, a,na,wa,pia, b,nb, pib, c,nc,wc);
+    detail::ttm(ep,sp,fp,
+                q,p,
+                a,na,wa,pia,
+                b,nb,   pib,
+                c,nc,wc    );
 }
 
 
 /**
- * \brief Implements a mode-q tensor-times-vector-multiplication
+ * \brief Implements a mode-q tensor-times-matrix multiplication
  *
  */
 template<class value_t, class execution_policy, class slicing_policy, class fusion_policy>
-inline auto tensor_times_matrix(
-	std::size_t q, tensor<value_t> const& a,  tensor<value_t> const& b, 
-	execution_policy ep, slicing_policy sp, fusion_policy fp)  
+inline auto ttm(
+        std::size_t q,
+        tensor<value_t> const& a,
+        tensor<value_t> const& b,
+        execution_policy ep, slicing_policy sp, fusion_policy fp)
 {
     auto const p = a.order();
 
@@ -113,10 +119,11 @@ inline auto tensor_times_matrix(
 
     auto c   = tensor<value_t>(nc,a.layout());
 
-    tensor_times_matrix( ep, sp, fp, q, p,
-		a.data().data(), a.shape().data(), a.strides().data(), a.layout().data(),
-        b.data().data(), b.shape().data(), b.layout().data(),
-		c.data().data(), c.shape().data(), c.strides().data(), c.layout().data());
+    ttm( ep, sp, fp,
+         q, p,
+         a.data().data(), a.shape().data(), a.strides().data(), a.layout().data(),
+         b.data().data(), b.shape().data(),                     b.layout().data(),
+         c.data().data(), c.shape().data(), c.strides().data());
 		
 	return c;
 }
@@ -124,11 +131,12 @@ inline auto tensor_times_matrix(
 }
 
 /**
- * \brief Implements a mode-q tensor-times-vector-multiplication
+ * \brief Implements a mode-q tensor-times-matrix multiplication
  *
  */
 template<class value_t>
 inline auto operator*(tlib::tensor_view<value_t> const& a,  tlib::tensor<value_t> const& b)
 {
-    return tensor_times_matrix(a.contraction_mode(), a.get_tensor(),  b, tlib::execution::blas, tlib::slicing::large, tlib::loop_fusion::all) ;
+    return ttm(a.contraction_mode(), a.get_tensor(),  b,
+               tlib::parallel_policy::omp_forloop_t{}, tlib::slicing_policy::slice_t{}, tlib::fusion_policy::all_t{}) ;
 }

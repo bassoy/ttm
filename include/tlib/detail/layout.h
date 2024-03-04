@@ -120,7 +120,7 @@ inline void compute_last_order_layout(OutputIt begin, OutputIt end)
 template<class InputIt, class SizeType>
 inline auto inverse_mode(InputIt layout_begin, InputIt layout_end, SizeType mode )
 {		
-	using value_type = typename std::iterator_traits<InputIt>::value_type;
+    using value_type = typename std::iterator_traits<InputIt>::value_type;
 	if(!is_valid_layout(layout_begin,layout_end))
 		throw std::runtime_error("Error in tlib::detail::inverse_mode(): input layout is not valid.");
 				
@@ -135,7 +135,7 @@ inline auto inverse_mode(InputIt layout_begin, InputIt layout_end, SizeType mode
 	
 	auto inverse_mode = value_type{0u};
 	for(; inverse_mode < p; ++inverse_mode)
-		if(layout_begin[inverse_mode] == mode)
+        if(layout_begin[inverse_mode] == value_type(mode))
 			break;
 			
 	assert(inverse_mode < p);
