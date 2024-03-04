@@ -1,0 +1,36 @@
+name: tests
+
+on:
+  push:
+    branches:
+      - main  # Adjust this to your main branch name
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up C++ build environment
+      uses: actions/setup-cpp@v2
+      with:
+        cpp-version: '17'  # Adjust the C++ version as needed
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install libmkl-dev intel-mkl
+        # sudo apt-get install -y cmake  # Install CMake
+        # Install any other dependencies your project needs
+
+    - name: Build and run tests
+      run: |
+        #mkdir build
+        #cd build
+        #cmake ..
+        #cmake --build .
+        #ctest
+
