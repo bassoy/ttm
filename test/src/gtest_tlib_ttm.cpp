@@ -211,7 +211,7 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
 
 
                 {
-                    tlib::tensor_times_matrix(ep,sp,fp,  q,p,
+                    tlib::ttm(ep,sp,fp,  q,p,
                                               a.data(), na.data(), wa.data(), pia.data(),
                                               b.data(), nb.data(), rm.data(),
                                               c.data(), nc.data(), wc.data());
@@ -223,7 +223,7 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
 
 
                 {
-                    tlib::tensor_times_matrix(ep,sp,fp,  q,p,
+                    tlib::ttm(ep,sp,fp,  q,p,
                                               a.data(), na.data(), wa.data(), pia.data(),
                                               b.data(), nb.data(), cm.data(),
                                               c.data(), nc.data(), wc.data());
