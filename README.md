@@ -51,13 +51,13 @@ Please have a look at the [wiki](https://github.com/bassoy/ttm/wiki) page for mo
 The experiments were carried out on a Core i9-7900X Intel Xeon processor with 10 cores and 20 hardware threads running at 3.3 GHz.
 The source code has been compiled with GCC v7.3 using the highest optimization level `-Ofast` and `-march=native`, `-pthread` and `-fopenmp`. 
 Parallel execution has been accomplished using GCC ’s implementation of the OpenMP v4.5 specification. 
-We have used the `dot` and `gemv` implementation of the OpenBLAS library v0.2.20. 
+We have used the `gemv` and `gemm` implementation of the MLK library v2024. 
 The benchmark results of each of the following functions are the average of 10 runs.
 
 The comparison includes three state-of-the-art libraries that implement three different approaches. 
 * [TCL](https://github.com/springer13/tcl) (v0.1.1 ) implements the TTGT approach. 
 * [TBLIS](https://github.com/devinamatthews/tblis) ( v1.0.0 ) implements the GETT approach.
-* [EIGEN](https://bitbucket.org/eigen/eigen/src/default/) ( v3.3.90 ) sequentially executes the tensor-times-vector in-place.
+* [EIGEN](https://bitbucket.org/eigen/eigen/src/default/) ( v3.3.7 ) executes the tensor-times-matrix in-place.
 
 The experiments were carried out with asymmetrically-shaped and symmetrically-shaped tensors in order to provide a comprehensive test coverage where
 the tensor elements are stored according to the first-order storage format.
@@ -70,12 +70,12 @@ The contraction mode `q` has also been varied from `1` to the tensor order.
 
 <table>
 <tr>
-<td><img src="https://github.com/bassoy/ttv/blob/master/misc/symmetric_throughput_single_precision.png" alt="Drawing" style="width: 250px;"/> </td>
-<td><img src="https://github.com/bassoy/ttv/blob/master/misc/symmetric_speedup_single_precision.png" alt="Drawing" style="width: 250px;"/> </td>
+<td><img src="https://github.com/bassoy/ttm/blob/master/misc/symmetric_throughput_single_precision.png" alt="Drawing" style="width: 250px;"/> </td>
+<td><img src="https://github.com/bassoy/ttm/blob/master/misc/symmetric_speedup_single_precision.png" alt="Drawing" style="width: 250px;"/> </td>
 </tr>
 <tr> 
-<td> <img src="https://github.com/bassoy/ttv/blob/master/misc/symmetric_throughput_double_precision.png" alt="Drawing" style="width: 250px;"/> </td>
-<td> <img src="https://github.com/bassoy/ttv/blob/master/misc/symmetric_speedup_double_precision.png" alt="Drawing" style="width: 250px;"/> </td>
+<td> <img src="https://github.com/bassoy/ttm/blob/master/misc/symmetric_throughput_double_precision.png" alt="Drawing" style="width: 250px;"/> </td>
+<td> <img src="https://github.com/bassoy/ttm/blob/master/misc/symmetric_speedup_double_precision.png" alt="Drawing" style="width: 250px;"/> </td>
 </tr>
 </table>
 
@@ -85,12 +85,12 @@ The contraction mode `q` has also been varied from `1` to the tensor order.
 
 <table>
 <tr>
-<td><img src="https://github.com/bassoy/ttv/blob/master/misc/nonsymmetric_throughput_single_precision.png" alt="Drawing" style="width: 250px;"/> </td>
-<td><img src="https://github.com/bassoy/ttv/blob/master/misc/nonsymmetric_speedup_single_precision.png" alt="Drawing" style="width: 250px;"/> </td>
+<td><img src="https://github.com/bassoy/ttm/blob/master/misc/nonsymmetric_throughput_single_precision.png" alt="Drawing" style="width: 250px;"/> </td>
+<td><img src="https://github.com/bassoy/ttm/blob/master/misc/nonsymmetric_speedup_single_precision.png" alt="Drawing" style="width: 250px;"/> </td>
 </tr>
 <tr> 
-<td> <img src="https://github.com/bassoy/ttv/blob/master/misc/nonsymmetric_throughput_double_precision.png" alt="Drawing" style="width: 250px;"/> </td>
-<td> <img src="https://github.com/bassoy/ttv/blob/master/misc/nonsymmetric_speedup_double_precision.png" alt="Drawing" style="width: 250px;"/> </td>
+<td> <img src="https://github.com/bassoy/ttm/blob/master/misc/nonsymmetric_throughput_double_precision.png" alt="Drawing" style="width: 250px;"/> </td>
+<td> <img src="https://github.com/bassoy/ttm/blob/master/misc/nonsymmetric_speedup_double_precision.png" alt="Drawing" style="width: 250px;"/> </td>
 </tr>
 </table>
 
@@ -99,47 +99,53 @@ The contraction mode `q` has also been varied from `1` to the tensor order.
 ## Example 
 ```cpp
 /*main.cpp*/
+#include <tlib/ttm.h>
+
 #include <vector>
 #include <numeric>
 #include <iostream>
-#include <tlib/ttv.h>
 
 
 int main()
 {
-  const auto q = 2ul; // contraction mode
-  
-  auto A = tlib::tensor<float>( {4,3,2} ); 
-  auto B = tlib::tensor<float>( {5,3}   );
-  std::iota(A.begin(),A.end(),1);
-  std::fill(B.begin(),B.end(),1);
+    using value_t    = float;
+    using tensor_t   = tlib::tensor<value_t>;     // or std::array<value_t,N>
+
+    auto A = tensor_t( {4,3,2} );
+    auto B = tensor_t( {5,4}   );
+
+    std::iota(A.begin(),A.end(),1);
+    std::fill(B.begin(),B.end(),1);
+    
+    std::cout << "A = " << A << std::endl;
+    std::cout << "B = " << B << std::endl;
 
 /*
-  A =  { 1  5  9  | 13 17 21
-         2  6 10  | 14 18 22
-         3  7 11  | 15 19 23
-         4  8 12  | 16 20 24 };
+  A =
+  { 1  5  9  | 13 17 21
+    2  6 10  | 14 18 22
+    3  7 11  | 15 19 23
+    4  8 12  | 16 20 24 };
 
-  B =  { 1  1  1  | 1  1  1
-         1  1  1  | 1  1  1
-         1  1  1  | 1  1  1
-         1  1  1  | 1  1  1
-         1  1  1  | 1  1  1 };
+  B =
+  { 1  1  1  1  1
+    1  1  1  1  1
+    1  1  1  1  1
+    1  1  1  1  1};
 */
 
-  // computes mode-2 tensor-times-vector product with C(i,m,j) = A(i,k,j) * B(m,k)
-  auto C = A (q)* B; 
-  
-/*
-  C =  { 1+5+9  ... 1+5+9  | 13+17+21 ... 13+17+21
-         2+6+10 ... 2+6+10 | 14+18+22 ... 14+18+22
-         3+7+11 ... 3+7+11 | 15+19+23 ... 15+19+23
-         4+8+12 ... 4+8+12 | 16+20+24 ... 16+20+24 };
+    auto C = A (1)* B;
+
+    std::cout << "C = " << C << std::endl;
+
+
+/* for q=1
+  C =
+  { 1+..+4 5+..+8 9+..+12 | 13+..+16 17+..+20 21+..+24
+      ..     ..     ..    |    ..       ..       ..
+    1+..+4 5+..+8 9+..+12 | 13+..+16 17+..+20 21+..+24 };
 */
 }
 ```
-Compile with `g++ -I../include/ -std=c++17 -Ofast -fopenmp main.cpp -o main` and additionally `-DUSE_OPENBLAS` or `-DUSE_INTELBLAS`  for fast execution.
-
-# Citation
-
-If you want to refer to TTM as part of a research paper, please cite the article
+Compile with `g++ -I${TLIB_INC} ${BLAS_INC} -std=c++17 -O3 -fopenmp main.cpp ${BLAS_LIB} ${BLAS_FLAGS} -DUSE_MKLBLAS -o main`
+where `${TLIB_INC}` is the header location of `TLIB` and `${BLAS_INC}` is the header location of the desired `BLAS` library.
