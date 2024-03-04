@@ -22,22 +22,22 @@ The order-$2$ tensor $\mathbf{B}$ is a matrix with shape $\mathbf{n}\_b = (m,n\_
 A simple example of the tensor-matrix multiplication is the matrix-matrix multiplication with $\mathbf{C} = \mathbf{B} \cdot \mathbf{A}$ with $q=1$.
 The number of dimensions (order) $p$ and the dimensions $n_r$ as well as the linear tensor layout $\mathbf{\pi}$ of the tensors $\underline{\mathbf{A}}$ and $\underline{\mathbf{C}}$ can be chosen at runtime.
 
-All function implementations are based on the Loops-Over-GEMM (LOG) approach and utilize high-performance `GEMM` or `GEMV` routines of `BLAS` such as OpenBLAS or Intel MKL without transposing the tensor.
-The library is an extension of the [boost/ublas](https://github.com/boostorg/ublas) tensor library containing the sequential version. Implementation details and runtime behevior of the tensor-matrix multiplication functions are described in ???.
+All function implementations are based on the Loops-Over-GEMM (LOG) approach and utilize high-performance `GEMM` or `GEMV` routines of `BLAS` such as OpenBLAS or Intel MKL without transposing tensors.
+The library is an extension of the [boost/ublas](https://github.com/boostorg/ublas) tensor library containing the sequential version. 
 
-Please have a look at the [wiki](https://github.com/bassoy/ttv/wiki) page for more informations about the **usage**, **function interfaces** and the **setting parameters**.
+Please have a look at the [wiki](https://github.com/bassoy/ttm/wiki) page for more informations about the **usage**, **function interfaces** and the **setting parameters**.
 
 ## Key Features
 
 ### Flexibility
-* Contraction mode `q`, tensor order `p`, tensor extents `n` and tensor layout `pi` can be chosen at runtime
+* Contraction mode $q$, tensor order $p$, tensor extents $n$ and tensor layout $\mathbf{\pi}$ can be chosen at runtime
 * Supports any linear tensor layout inlcuding the first-order and last-order storage layouts
 * Offers two high-level and one C-like low-level interfaces for calling the tensor-times-matrix multiplication
 * Implemented independent of a tensor data structure (can be used with `std::vector` and `std::array`)
-* Supports float, double, complex and double complex data types (and more if a BLAS library is not used)
+* Currently supports float and double
 
 ### Performance
-* Multi-threading support with OpenMP
+* Multi-threading support with OpenMP v4.5 or higher
 * Can be used with and without a BLAS implementation
 * Performs in-place operations without transposing the tensor - no extra memory needed
 * For large tensors reaches peak matrix-times-matrix performance
@@ -110,7 +110,7 @@ int main()
   const auto q = 2ul; // contraction mode
   
   auto A = tlib::tensor<float>( {4,3,2} ); 
-  auto B = tlib::tensor<float>( {3,1}   );
+  auto B = tlib::tensor<float>( {5,3}   );
   std::iota(A.begin(),A.end(),1);
   std::fill(B.begin(),B.end(),1);
 
@@ -120,17 +120,21 @@ int main()
          3  7 11  | 15 19 23
          4  8 12  | 16 20 24 };
 
-  B =   { 1 1 1 } ;
+  B =  { 1  1  1  | 1  1  1
+         1  1  1  | 1  1  1
+         1  1  1  | 1  1  1
+         1  1  1  | 1  1  1
+         1  1  1  | 1  1  1 };
 */
 
-  // computes mode-2 tensor-times-vector product with C(i,j) = A(i,k,j) * B(k)
-  auto C1 = A (q)* B; 
+  // computes mode-2 tensor-times-vector product with C(i,m,j) = A(i,k,j) * B(m,k)
+  auto C = A (q)* B; 
   
 /*
-  C =  { 1+5+ 9 | 13+17+21
-         2+6+10 | 14+18+22
-         3+7+11 | 15+19+23
-         4+8+12 | 16+20+24 };
+  C =  { 1+5+9  ... 1+5+9  | 13+17+21 ... 13+17+21
+         2+6+10 ... 2+6+10 | 14+18+22 ... 14+18+22
+         3+7+11 ... 3+7+11 | 15+19+23 ... 15+19+23
+         4+8+12 ... 4+8+12 | 16+20+24 ... 16+20+24 };
 */
 }
 ```
@@ -138,4 +142,4 @@ Compile with `g++ -I../include/ -std=c++17 -Ofast -fopenmp main.cpp -o main` and
 
 # Citation
 
-If you want to refer to TTV as part of a research paper, please cite the article
+If you want to refer to TTM as part of a research paper, please cite the article
