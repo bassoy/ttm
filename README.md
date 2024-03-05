@@ -22,7 +22,7 @@ The order-$2$ tensor $\mathbf{B}$ is a matrix with shape $\mathbf{n}\_b = (m,n\_
 A simple example of the tensor-matrix multiplication is the matrix-matrix multiplication with $\mathbf{C} = \mathbf{B} \cdot \mathbf{A}$ with $q=1$.
 The number of dimensions (order) $p$ and the dimensions $n_r$ as well as the linear tensor layout $\mathbf{\pi}$ of the tensors $\underline{\mathbf{A}}$ and $\underline{\mathbf{C}}$ can be chosen at runtime.
 
-All function implementations are based on the Loops-Over-GEMM (LOG) approach and utilize high-performance `GEMM` or `GEMV` routines of `BLAS` such as OpenBLAS or Intel MKL without transposing tensors.
+All function implementations are based on the Loops-Over-GEMM (LOG) approach and utilize high-performance `gemm` or `gemm` routines of `BLAS` such as OpenBLAS or Intel MKL without transposing tensors.
 The library is an extension of the [boost/ublas](https://github.com/boostorg/ublas) tensor library containing the sequential version. 
 
 Please have a look at the [wiki](https://github.com/bassoy/ttm/wiki) page for more informations about the **usage**, **function interfaces** and the **setting parameters**.
@@ -38,7 +38,7 @@ Please have a look at the [wiki](https://github.com/bassoy/ttm/wiki) page for mo
 
 ### Performance
 * Multi-threading support with OpenMP v4.5 or higher
-* Can be used with and without a BLAS implementation
+* Currently mustbe used with a BLAS implementation
 * Performs in-place operations without transposing the tensor - no extra memory needed
 * For large tensors reaches peak matrix-times-matrix performance
 
@@ -48,10 +48,10 @@ Please have a look at the [wiki](https://github.com/bassoy/ttm/wiki) page for mo
 
 ## Experiments
 
-The experiments were carried out on a Core i9-7900X Intel Xeon processor with 10 cores and 20 hardware threads running at 3.3 GHz.
-The source code has been compiled with GCC v7.3 using the highest optimization level `-Ofast` and `-march=native`, `-pthread` and `-fopenmp`. 
-Parallel execution has been accomplished using GCC ’s implementation of the OpenMP v4.5 specification. 
-We have used the `gemv` and `gemm` implementation of the MLK library v2024. 
+The experiments were carried out on a Intel Xeon Gold 6248R Xeon processor with 24 cores running at  a base frequency of 3 GHz.
+The source code has been compiled with GCC v10.2 using the highest optimization level `-O3` and `-march=native`, `-pthread` and `-fopenmp`. 
+Parallel execution has been accomplished using GCC’s implementation of the OpenMP v4.5 specification. 
+We have used the `gemv` and `gemm` implementation of the Intel MLK library v2024. 
 The benchmark results of each of the following functions are the average of 10 runs.
 
 The comparison includes three state-of-the-art libraries that implement three different approaches. 
@@ -147,5 +147,3 @@ int main()
 */
 }
 ```
-Compile with `g++ -I${TLIB_INC} ${BLAS_INC} -std=c++17 -O3 -fopenmp main.cpp ${BLAS_LIB} ${BLAS_FLAGS} -DUSE_MKLBLAS -o main`
-where `${TLIB_INC}` is the header location of `TLIB` and `${BLAS_INC}` is the header location of the desired `BLAS` library.

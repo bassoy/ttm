@@ -33,9 +33,22 @@ jobs:
         cd ${GITHUB_WORKSPACE}
         git clone https://github.com/bassoy/ttm.git
 
-    - name: Build and run tests
+    - name: Build and run tests (Intel MKL)
       run: |
         cd ttm/test
-        make -j
-        ./bin/main      
+        make clean && make -j BLAS_FLAG=MKL
+        ./bin/main
+
+    - name: Build and run tests (OpenBLAS)
+      run: |
+        cd ttm/test
+        make clean && make -j BLAS_FLAG=OPENBLAS
+        ./bin/main
         
+    - name: Build and run examples (Intel MKL)
+      run: |
+        cd ttm/example
+        make clean && make -j BLAS_FLAG=MKL
+        ./interface1
+        ./interface2
+        ./interface3

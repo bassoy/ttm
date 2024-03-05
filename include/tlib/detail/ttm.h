@@ -64,7 +64,7 @@ inline void set_blas_threads(size_t num)
 static inline unsigned get_blas_threads()
 {
 #ifdef USE_OPENBLAS
-    return openblas_get_max_threads();
+    return openblas_get_num_threads();
 #elif defined USE_MKLBLAS
     return mkl_get_max_threads();
 #endif
