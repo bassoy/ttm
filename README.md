@@ -4,7 +4,7 @@ High-Performance Tensor-Vector Multiplication Library (TTM)
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://github.com/bassoy/ttm/blob/master/LICENSE)
 [![Wiki](https://img.shields.io/badge/ttm-wiki-blue.svg)](https://github.com/bassoy/ttm/wiki)
 [![Gitter](https://img.shields.io/badge/ttm-chat%20on%20gitter-4eb899.svg)](https://gitter.im/bassoy)
-[![Build Status](https://travis-ci.org/bassoy/ttm.svg?branch=master)](https://travis-ci.org/bassoy/ttv)
+[![Build Status](https://github.com/bassoy/ttm/actions/workflows/test.yml/badge.svg)](https://github.com/bassoy/ttm/actions)
 
 ## Summary
 **TTM** is C++ high-performance tensor-matrix multiplication **header-only library**
