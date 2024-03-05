@@ -1,4 +1,4 @@
-name: tests
+name: "Linux"
 
 on:
   push:
@@ -14,20 +14,19 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Set up C++ build environment
-      uses: actions/setup-cpp@v2
-      with:
-        cpp-version: '17'  # Adjust the C++ version as needed
-
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install libmkl-dev intel-mkl
-        # sudo apt-get install -y cmake  # Install CMake
-        # Install any other dependencies your project needs
+    - name: Setup C++ environment
+      run:  |
+        sudo apt update && sudo apt install -y g++ libomp-dev libopenblas-dev libmkl-dev libmkl-core 
+      
+    - name: Git clone TTM repo
+      run:  |
+        cd ${GITHUB_WORKSPACE}
+        git clone https://github.com/bassoy/ttm.git
 
     - name: Build and run tests
       run: |
+        cd ttm
+        cd test
         #mkdir build
         #cd build
         #cmake ..
