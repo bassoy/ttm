@@ -25,7 +25,9 @@ The number of dimensions (order) $p$ and the dimensions $n_r$ as well as the lin
 All function implementations are based on the Loops-Over-GEMM (LOG) approach and utilize high-performance `gemm` or `gemm` routines of `BLAS` such as OpenBLAS or Intel MKL without transposing tensors.
 The library is an extension of the [boost/ublas](https://github.com/boostorg/ublas) tensor library containing the sequential version. 
 
-Please have a look at the [wiki](https://github.com/bassoy/ttm/wiki) page for more informations about the **usage**, **function interfaces** and the **setting parameters**.
+## Usage & Installation
+
+Please have a look at the [wiki](https://github.com/bassoy/ttm/wiki) page for more informations about library **usage**, function **interfaces** and the **parameters** settings.
 
 ## Key Features
 
