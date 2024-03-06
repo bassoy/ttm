@@ -7,7 +7,7 @@ High-Performance Tensor-Matrix Multiplication Library (TTM)
 [![Build Status](https://github.com/bassoy/ttm/actions/workflows/test.yml/badge.svg)](https://github.com/bassoy/ttm/actions)
 
 ## Summary
-**TTM** is C++ high-performance tensor-matrix multiplication **header-only library**
+**TTM** is C++ high-performance tensor-matrix multiplication **header-only library**.
 It provides free C++ functions for parallel computing the **mode-`q` tensor-times-matrix product** of the general form
 
 $$
