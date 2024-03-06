@@ -1,4 +1,4 @@
-High-Performance Tensor-Vector Multiplication Library (TTM)
+High-Performance Tensor-Matrix Multiplication Library (TTM)
 =====
 [![Language](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://github.com/bassoy/ttm/blob/master/LICENSE)
