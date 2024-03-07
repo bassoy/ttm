@@ -7,6 +7,8 @@ ifeq ($(BLAS_FLAG), OPENBLAS)
   include ../openblas.mk
 else ifeq ($(BLAS_FLAG), MKL)
   include ../mkl.mk
+else 
+  $(error BLAS_FLAG should be either OPENBLAS or MLK)
 endif
 
 
