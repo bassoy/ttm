@@ -73,7 +73,7 @@ np.all(np.equal(C,D))
 int main()
 {
     using value_t    = float;
-    using tensor_t   = tlib::tensor<value_t>;     // or std::array<value_t,N>
+    using tensor_t   = tlib::tensor<value_t>;
 
     auto A = tensor_t( {4,3,2} );
     auto B = tensor_t( {5,4}   );
