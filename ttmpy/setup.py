@@ -45,7 +45,7 @@ ext_modules = [
 
 setup(
     name='ttmpy',
-    version='0.0.2',
+    version='0.0.1',
     author='Cem Bassoy',
     author_email='cem.bassoy@gmail.com',
     description='Python module for fast tensor-times-matrix multiplication',

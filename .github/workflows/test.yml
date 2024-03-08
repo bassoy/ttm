@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
+    - name: Checkout Repository
       uses: actions/checkout@v2
 
-    - name: Setup C++ environment
+    - name: Setup C++ Environment
       run: |
-        sudo apt update && sudo apt install -y g++ libomp-dev libopenblas-dev libmkl-dev intel-mkl
+        sudo apt update && sudo apt install -y g++ libomp-dev libopenblas-dev libmkl-dev intel-mkl python3-pip python3-virtualenv
         
     - name: Install Gtest
       run: |
@@ -28,27 +28,29 @@ jobs:
         make -j
         sudo make install
       
-    - name: Git clone TTM repo
+    - name: Git Clone TTM Repo
       run: |
         cd ${GITHUB_WORKSPACE}
         git clone https://github.com/bassoy/ttm.git
 
-    - name: Build and run tests (Intel MKL)
+    - name: Build and Run Tests (Intel MKL)
       run: |
         cd ttm/test
         make clean && make -j BLAS_FLAG=MKL
         ./bin/main
 
-    - name: Build and run tests (OpenBLAS)
+    - name: Build and Run Tests (OpenBLAS)
       run: |
         cd ttm/test
         make clean && make -j BLAS_FLAG=OPENBLAS
         ./bin/main
         
-    - name: Build and run examples (Intel MKL)
+    - name: Build and Run Python Wrapper Tests (OpenBLAS)
       run: |
-        cd ttm/example
-        make clean && make -j BLAS_FLAG=MKL
-        ./interface1
-        ./interface2
-        ./interface3
+        cd ttm/ttmpy
+        virtualenv ~/env-ttm
+        source ~/env-ttm/bin/activate
+        pip install -e .
+        cd tests
+        python3 -m unittest discover -v
+        deactivate

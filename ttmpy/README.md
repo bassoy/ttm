@@ -8,7 +8,7 @@ cd ttm
 
 Install OpenBLAS and MLK
 ```bash
-sudo apt install libopenblas-base libopenblas-dev libomp-dev
+sudo apt install libopenblas-dev libopenblas64-pthread-dev libomp-dev python3-pip python3-virtualenv
 ```
 
 Navigate to the python wrapper folder
@@ -16,15 +16,26 @@ Navigate to the python wrapper folder
 cd ttmpy
 ```
 
+Activate the virtual environment `env-ttm`
+```bash
+virtualenv ~/env-ttm
+source ~/env-ttm/bin/activate
+```
+
 Install the pacakge in editable mode
 ```bash
 pip install -e .
-# python3 setup.py build_ext -i
 ```
 
 Test the package
 ```bash
+cd tests
 python3 -m unittest discover -v
+```
+
+Deactivate the virtual environment `env-ttm`
+```bash
+deactivate
 ```
 
 
@@ -36,7 +47,7 @@ C = ttm(q, A, b)
 ```
 * `q` is the contraction mode with `1<=q<=A.ndim`
 * `A` is an input `numpy.ndarray` with typically `A.ndim>=2`
-* `b` is an input `numpy.ndarray` with `b.ndim=2` and `b.shape[1]=A.shape[q-1]` and `b.shape[0]=C.shape[q-1]`
+* `B` is an input `numpy.ndarray` with `b.ndim=2` and `b.shape[1]=A.shape[q-1]` and `b.shape[0]=C.shape[q-1]`
 * `C` is the output `numpy.ndarray` with `A.ndim`
 
 ## Python Example
@@ -46,8 +57,9 @@ C = ttm(q, A, b)
 import numpy as np
 import ttmpy as tp
 
-A = np.arange(3*2*4, dtype=np.float64).reshape(3, 2, 4)
-b = np.arange(3, dtype=np.float64)
-C = ttm(1,A,b)
-# C = [[40,43,46,49,],[52,55,58,61]]
+A = np.arange(4*3*2, dtype=np.float64).reshape(4,3,2)
+B = np.arange(5*4,   dtype=np.float64).reshape(5,4)
+C = tp.ttm(1,A,B)
+D = np.einsum("ijk,xi->xjk", A, B)
+np.all(np.equal(C,D))
 ```
