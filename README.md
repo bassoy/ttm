@@ -11,7 +11,6 @@ High-Performance Tensor-Matrix Multiplication Library (TTM)
 It provides free C++ functions for parallel computing the **mode-`q` tensor-times-matrix product** of the general form
 
 $$
-\Large
 \underline{\mathbf{C}} = \underline{\mathbf{A}} \bullet_q \mathbf{B} \quad :\Leftrightarrow \quad
 \underline{\mathbf{C}} (i_1, \dots, i_{q-1}, j, i_{q+1}, \dots, i_p) = \sum_{i_q=1}^{n_q} \underline{\mathbf{A}}({i_1, \dots, i_q,  \dots, i_p}) \cdot \mathbf{B}({j,i_q}).
 $$
