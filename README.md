@@ -48,7 +48,19 @@ Please have a look at the [wiki](https://github.com/bassoy/ttm/wiki) page for mo
 * Requires the tensor elements to be contiguously stored in memory.
 * Element types must be an arithmetic type suporting multiplication and addition operator
 
-## Example 
+## Python Example
+```python
+import numpy as np
+import ttmpy as tp
+
+A = np.arange(4*3*2, dtype=np.float64).reshape(4,3,2)
+B = np.arange(5*4,   dtype=np.float64).reshape(5,4)
+C = tp.ttm(1,A,B)
+D = np.einsum("ijk,xi->xjk", A, B)
+np.all(np.equal(C,D))
+```
+
+## C++ Example 
 ```cpp
 /*main.cpp*/
 #include <tlib/ttm.h>
