@@ -1,4 +1,4 @@
-High-Performance Tensor-Matrix Multiplication Library (TTM)
+High-Performance Tensor-Matrix Multiplication Library - TLIB(TTM)
 =====
 [![Language](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://github.com/bassoy/ttm/blob/master/LICENSE)
@@ -7,7 +7,7 @@ High-Performance Tensor-Matrix Multiplication Library (TTM)
 [![Build Status](https://github.com/bassoy/ttm/actions/workflows/test.yml/badge.svg)](https://github.com/bassoy/ttm/actions)
 
 ## Summary
-**TTM** is C++ high-performance tensor-matrix multiplication **header-only library**.
+**TLIB(TTM)** is C++ high-performance tensor-matrix multiplication **header-only library**.
 It provides free C++ functions for parallel computing the **mode-`q` tensor-times-matrix product** of the general form
 
 $$
@@ -38,7 +38,7 @@ Please have a look at the [wiki](https://github.com/bassoy/ttm/wiki) page for mo
 
 ### Requirements
 * Requires the tensor elements to be contiguously stored in memory.
-* Element types must be an arithmetic type suporting multiplication and addition operator
+* Element types must be either `float` or `double`.
 
 ## Python Example
 ```python
