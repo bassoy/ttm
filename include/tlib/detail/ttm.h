@@ -25,6 +25,7 @@
 #include <numeric>
 #include <algorithm>
 #include <thread>
+#include <functional>
 
 #include "mtm.h"
 #include "tags.h"
