@@ -230,6 +230,46 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
+            parallel_policy::sequential_t, slicing_policy::slice_t, fusion_policy::none_t,
+            unsigned const q, unsigned const p,
+            const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+            const value_t *b, size_t const*const nb, size_t const*const pib,
+                  value_t *c, size_t const*const nc, size_t const*const wc
+			)
+{
+    set_blas_threads_min();
+    //assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+
+    auto is_cm = pib[0] == 1;
+
+    if(!is_case<8>(p,q,pia)){
+        if(is_cm)
+            mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
+        else
+            mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+	}
+	else {
+        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+
+        using namespace std::placeholders;
+
+        auto n1     = na[pia[0]-1];
+        auto m      = nc[q-1];
+        auto nq     = na[q-1];
+        auto wq     = wa[q-1];
+
+        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
+        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+
+        if(is_cm) multiple_gemm_with_slices(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+        else      multiple_gemm_with_slices(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+	}
+}
+
+
+
+template<class value_t, class size_t>
+inline void ttm(
             parallel_policy::threaded_gemm_t, slicing_policy::slice_t, fusion_policy::none_t,
             unsigned const q, unsigned const p,
             const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
@@ -461,6 +501,44 @@ inline void ttm(
                 else      gemm_row(aa, b, cc);
             }
         }
+    }
+}
+
+
+
+template<class value_t, class size_t>
+inline void ttm(
+            parallel_policy::sequential_t, slicing_policy::subtensor_t, fusion_policy::none_t,
+            unsigned const q, unsigned const p,
+            const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+            const value_t *b, size_t const*const nb, size_t const*const pib,
+                  value_t *c, size_t const*const nc, size_t const*const wc
+            )
+{
+    auto is_cm = pib[0] == 1;
+
+    set_blas_threads_min();
+
+    if(!is_case<8>(p,q,pia)){
+        if(is_cm)
+            mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
+        else
+            mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+    }
+    else {
+        auto const qh  = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const nnq = product(na, pia, 1, qh);
+        auto const m   = nc[q-1];
+        auto const nq  = na[q-1];
+
+
+        using namespace std::placeholders;
+        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
+        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
+
+        if(is_cm) multiple_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+        else      multiple_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+
     }
 }
 
