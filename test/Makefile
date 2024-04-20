@@ -1,7 +1,7 @@
 CXX :=g++
-#CXX :=clang++
+#CXX :=clang++-12
 
-CXX_FLAGS +=-Wextra -Wall -Wpedantic -O3 -std=c++20 -pthread -fopenmp
+CXX_FLAGS +=-Wextra -Wall -Wpedantic -O3 -std=c++2a -pthread -fopenmp
 
 ifeq ($(BLAS_FLAG), OPENBLAS)
   include ../openblas.mk
