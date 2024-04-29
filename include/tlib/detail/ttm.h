@@ -437,6 +437,9 @@ inline void ttm(
 }
 
 
+
+
+
 // only parallelize the outer dimensions
 template<class value_t, class size_t>
 inline void ttm(
@@ -503,6 +506,85 @@ inline void ttm(
         }
     }
 }
+
+
+
+
+
+
+
+// only parallelize the outer dimensions
+template<class value_t, class size_t>
+inline void ttm(
+        parallel_policy::omp_forloop_and_threaded_gemm_t, slicing_policy::slice_t, fusion_policy::all_t,
+        unsigned const q, unsigned const p, double ratio,
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b, size_t const*const nb, size_t const*const pib,
+              value_t *c, size_t const*const nc, size_t const*const wc
+        )
+{
+    // mkl_set_dynamic(1);
+    auto is_cm = pib[0] == 1;
+
+    if(!is_case<8>(p,q,pia)){
+        set_blas_threads_max();
+        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+        if(is_cm)
+            mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
+        else
+            mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+    }
+    else {
+        assert(is_case<8>(p,q,pia));
+        assert(p>2);
+        assert(q>0);
+
+        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+
+        // outer = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
+        auto const outer = product(na, pia, qh+1,p+1);
+
+        // w[pi[q]]  = 1 * n[pi[1]] * n[pi[2]] * ... * n[pi[qh-1]]
+        auto const wao = wa[pia[qh]-1];
+        auto const wco = wc[pia[qh]-1];
+
+        // inner = n[pi[2]] * ... * n[pi[qh-1]] with pi[qh] = q
+        auto const inner = product(na, pia, 2, qh);
+
+        auto const wai = na[pia[0]-1];
+        auto const wci = nc[pia[0]-1];
+
+        auto m      = nc[q-1];
+        auto nq     = na[q-1];
+        auto n1     = na[pia[0]-1];
+        auto wq     = wa[q-1];
+
+        using namespace std::placeholders;
+        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
+        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+        
+        
+        const auto ompthreads = unsigned (double(hwthreads)*ratio);
+        const auto blasthreads = unsigned (double(hwthreads)*(1.0-ratio));        
+
+#pragma omp parallel for schedule(dynamic) collapse(2) num_threads(ompthreads) firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
+        for(size_t k = 0u; k < outer; ++k){
+            for(size_t j = 0u; j < inner; ++j){
+                auto aa = a+k*wao + j*wai;
+                auto cc = c+k*wco + j*wci;
+
+                set_blas_threads(blasthreads);
+                assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+
+
+                if(is_cm) gemm_col(aa, b, cc);
+                else      gemm_row(aa, b, cc);
+            }
+        }
+    }
+}
+
+
 
 
 
@@ -693,6 +775,69 @@ inline void ttm(
             auto cc = c+k*wcq;
 
             set_blas_threads_max();
+            assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+
+            if(is_cm) gemm_col(aa, b, cc);
+            else      gemm_row(aa, b, cc);
+        }
+    }
+}
+
+
+template<class value_t, class size_t>
+inline void ttm(
+        parallel_policy::omp_forloop_and_threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
+        unsigned const q, unsigned const p, double ratio,
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b, size_t const*const nb, size_t const*const pib,
+              value_t *c, size_t const*const nc, size_t const*const wc
+        )
+{
+    // mkl_set_dynamic(1);
+    auto is_cm = pib[0] == 1;
+
+    if(!is_case<8>(p,q,pia)){
+        set_blas_threads_max();
+        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+        if(is_cm)
+            mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
+        else
+            mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+    }
+    else {
+        assert(is_case<8>(p,q,pia));
+        assert(q>0);
+        assert(p>2);
+
+        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+
+        // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
+        auto const num = product(na, pia, qh+1,p+1);
+
+        // w[pi[q]]  = 1 * n[pi[1]] * n[pi[2]] * ... * n[pi[qh-1]]
+        auto const waq = wa[pia[qh]-1];
+        auto const wcq = wc[pia[qh]-1];
+
+        // num = n[pi[1]] * n[pi[2]] * ... * n[pi[qh-1]] with pi[qh] = q
+        auto const nnq = product(na, pia, 1, qh);
+
+        auto m      = nc[q-1];
+        auto nq     = na[q-1];
+
+        using namespace std::placeholders;
+        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
+        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
+        
+        const auto ompthreads = unsigned (double(hwthreads)*ratio);
+        const auto blasthreads = unsigned (double(hwthreads)*(1.0-ratio));
+        
+
+#pragma omp parallel for schedule(dynamic) num_threads(ompthreads) firstprivate(num, waq,wcq, a,b,c, gemm_col, gemm_row, is_cm)
+        for(size_t k = 0u; k < num; ++k){
+            auto aa = a+k*waq;
+            auto cc = c+k*wcq;
+
+            set_blas_threads(blasthreads);
             assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
 
             if(is_cm) gemm_col(aa, b, cc);
