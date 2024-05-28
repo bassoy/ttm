@@ -18,7 +18,7 @@ class custom_build_ext(build_ext):
         self.compiler.set_executable("linker_so", "g++")
         build_ext.build_extensions(self)
 
-#g++ -Wall -shared -std=c++17 src/wrapped_ttv.cpp -o ttvpy.so $(python3 -m pybind11 --includes) -I../include -fPIC -fopenmp -DUSE_OPENBLAS -lm -lopenblas
+#g++ -Wall -shared -std=c++17 src/wrapped_ttm.cpp -o ttmpy.so $(python3 -m pybind11 --includes) -I../include -fPIC -fopenmp -DUSE_OPENBLAS -lm -lopenblas
 # python3 setup.py clean --all && rm -rf __pycache__ ttvpy.cpython-38-x86_64-linux-gnu.so build/
 # python3 setup.py build_ext -i
 # sudo pip install -e .
@@ -45,7 +45,7 @@ ext_modules = [
 
 setup(
     name='ttmpy',
-    version='0.0.1',
+    version='0.0.2',
     author='Cem Bassoy',
     author_email='cem.bassoy@gmail.com',
     description='Python module for fast tensor-times-matrix multiplication',
