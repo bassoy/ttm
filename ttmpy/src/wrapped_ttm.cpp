@@ -65,8 +65,8 @@ ttm(std::size_t const contraction_mode,
   // auto nnc          = std::size_t(cinfo.size);
 
  
-#if defined(USE_OPENBLAS) || defined(USE_MKL)
-  tlib::ttm<T>(tlib::parallel_policy::omp_forloop_t{}, tlib::slicing_policy::slice_t{}, tlib::fusion_policy::all_t{}, 
+#if defined(USE_OPENBLAS) || defined(USE_MKLBLAS)
+  tlib::ttm<T>(tlib::parallel_policy::omp_forloop_t{}, tlib::slicing_policy::subtensor_t{}, tlib::fusion_policy::outer_t{}, 
                                q, p, 
                                aptr, na.data(), wa.data(), pia.data(),  
                                bptr, nb.data(),            pib.data(), 
@@ -174,40 +174,49 @@ ttms(std::size_t const non_contraction_mode,
   }
   else /*if ( morder == "optimal" )*/ {  
     
-    #if 0
-    
-    // copy references of all vectors and their contraction dimension.    
+    // copy references of all matrices and their contraction dimension.    
     auto bpairs = std::vector<std::pair<py::array_t<T>*,unsigned>>(p-1);   
     for(auto r = 1u; r < q; ++r) /* r = 1...q-1*/
       bpairs.at(r-1) = std::make_pair(std::addressof(bs.at(r-1)),r);     
     for(auto r = q+1; r <= p; ++r) /*r = q+1...p*/
       bpairs.at(r-2) = std::make_pair(std::addressof(bs.at(r-2)),r);
     
-    // sort (ascending)  all vector references according to their dimension
-    auto rhs_dim_is_larger = [](auto const& lhs, auto const& rhs){ return lhs.first->shape(0) < rhs.first->shape(0);};
-    std::sort(bpairs.begin(), bpairs.end(), rhs_dim_is_larger);
+    // sort (ascending)  all matrices references according to their dimensions:
+    // With B_k in R^{m_k x n_k} beta_k = 1/n_k - 1/m_k and beta_{pi_r} < beta_{pi_{r+1}} 
+    auto lhs_dim_smaller_than_rhs_dim = [](auto const& lhs, auto const& rhs){ 
+      auto nl = lhs.first->shape();
+      auto nr = rhs.first->shape();
+      auto bl = 1.0/double(nl[1]) - 1.0/double(nl[0]);
+      auto br = 1.0/double(nr[1]) - 1.0/double(nr[0]);
+      return bl < br;
+    };
+    std::sort(bpairs.begin(), bpairs.end(), lhs_dim_smaller_than_rhs_dim);
     
     // check if vectors are well sorted.
-    assert(std::is_sorted(bpairs.begin(), bpairs.end(), rhs_dim_is_larger));
+    assert(std::is_sorted(bpairs.begin(), bpairs.end(), lhs_dim_smaller_than_rhs_dim));
           
     // update contraction modes for the remaining vectors after contraction
+    /*
     auto update_contraction_modes = [&bpairs](auto const& ib){
       assert(ib != bpairs.rend());
       auto const r = ib->second;
       auto decrease_contraction = [r](auto &bpair){ if(bpair.second>r) --bpair.second; }; 
       std::for_each(ib, bpairs.rend(), decrease_contraction);   
     };
-    
-    auto ib = bpairs.rbegin();
+    */
+    std::cout << std::endl << "c=";
+    auto ib = bpairs.begin();
     c = ttm(ib->second, apy, *(ib->first));  
-    update_contraction_modes(ib);
+    std::cout << ib->second << ",";
+    //update_contraction_modes(ib);
     
-    for(++ib; ib != bpairs.rend(); ++ib){
+    for(++ib; ib != bpairs.end(); ++ib){
       c = ttm(ib->second, c, *(ib->first));
-      update_contraction_modes(ib);
+      std::cout << ib->second << ",";
+      //update_contraction_modes(ib);
     } 
-    
-    #endif
+    std::cout << std::endl;
+        
 
   }
 
