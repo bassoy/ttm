@@ -43,7 +43,7 @@ class TestTTMs(unittest.TestCase):
     D  = np.einsum("ijkl,yk->ijyl", D, B[1])
     D  = np.einsum("ijkl,yl->ijky", D, B[2])   
     
-    for order in ["forward", "backward"] : #, "backward" , "optimal"
+    for order in ["forward", "backward", "optimal"] : #, "backward" , "optimal"
       C = tp.ttms(1, A, B, order)
       self.assertTrue(np.all(C==D))
       
@@ -57,7 +57,7 @@ class TestTTMs(unittest.TestCase):
     D  = np.einsum("ijkl,yk->ijyl", D, B[1])
     D  = np.einsum("ijkl,yl->ijky", D, B[2])   
 
-    for order in ["forward", "backward"] : # , "backward", "optimal"
+    for order in ["forward", "backward","optimal"] : # , "backward", 
       C = tp.ttms(2, A, B, order)
       self.assertTrue(np.all(C==D))  
 
@@ -70,7 +70,7 @@ class TestTTMs(unittest.TestCase):
     D  = np.einsum("ijkl,yj->iykl", D, B[1])
     D  = np.einsum("ijkl,yl->ijky", D, B[2])
 
-    for order in ["forward", "backward"] : # , "backward", "optimal"
+    for order in ["forward", "backward","optimal"] : # , "backward", "optimal"
       C = tp.ttms(3, A, B, order)
       self.assertTrue(np.all(C==D))  
 
@@ -83,7 +83,7 @@ class TestTTMs(unittest.TestCase):
     D  = np.einsum("ijkl,yj->iykl", D, B[1])
     D  = np.einsum("ijkl,yk->ijyl", D, B[2])
     
-    for order in ["forward", "backward"] : # , "backward", "optimal"
+    for order in ["forward", "backward","optimal"] : # , "backward", "optimal"
       C = tp.ttms(4, A, B, order)
       self.assertTrue(np.all(C==D)) 
 
