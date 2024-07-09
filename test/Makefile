@@ -15,7 +15,7 @@ include gtest.mk
 TLIB_INC :=-I../include -Iinclude
 
 CXX_FLAGS += $(BLAS_FLAGS)
-INCS      += $(TLIB_INC)  $(BLAS_INC)
+INCS      += $(GTEST_INC) $(TLIB_INC)  $(BLAS_INC)
 LIBS      += $(GTEST_LIB) $(BLAS_LIB) -lgomp -lpthread
 
 CFILES2 = $(wildcard src/*.cpp)
