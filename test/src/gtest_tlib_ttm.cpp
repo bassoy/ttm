@@ -83,7 +83,7 @@ inline value_type refc(std::vector<value_type> const& a, std::size_t j, std::siz
     static auto sum = [](auto n) { return (n*(n+1))/2u; };
     // j = i(1)*w(1) + ... + i(q-1)*w(q-1) + i(q+1)*w(q+1) + ... + i(p)*w(p)
     return sum(a[jq]) - sum(a[j]-1.0);
-};
+}
 
 
 template<class value_type, class size_type>
@@ -246,10 +246,6 @@ inline void check_tensor_times_matrix(const size_type init, const size_type step
 //                std::cout << "B = " << B << std::endl;
 //                std::cout << "C = " << C << std::endl;
 
-
-
-
-
             } // 1<=q<=p
             // break;
         } // layouts
@@ -303,6 +299,7 @@ TEST(TensorTimesMatrix, ThreadedGemmSubtensorNoLoopFusion)
 
 TEST(TensorTimesMatrix, OmpForLoopSliceOuterFusion)
 {
+
     using value_type       = double;
     using size_type        = std::size_t;
     using execution_policy = tlib::parallel_policy::omp_forloop_t;
@@ -392,19 +389,21 @@ TEST(TensorTimesMatrix, OmpForLoopThreadedGemmSubtensorOuterFusion)
 }
 
 
-
+#ifdef USE_MKLBLAS
 TEST(TensorTimesMatrix, BatchedGemmSubtensorOuterFusion)
 {
+
     using value_type       = double;
     using size_type        = std::size_t;
     using execution_policy = tlib::parallel_policy::batched_gemm_t;
     using slicing_policy   = tlib::slicing_policy::subtensor_t;
     using fusion_policy    = tlib::fusion_policy::outer_t;
 
-#ifdef USE_MKLBLAS
+
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,2u>(2u,3);
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,3u>(2u,3);
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,4u>(2u,3);
 //    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,5u>(2u,3);
-#endif
+
 }
+#endif

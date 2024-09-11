@@ -1,7 +1,7 @@
 CXX :=g++
-#CXX :=clang++-12
+#CXX :=clang++-12 
 
-CXX_FLAGS +=-Wextra -Wall -Wpedantic -O3 -std=c++2a -pthread -fopenmp
+CXX_FLAGS +=-Wextra -Wall -Wpedantic -O3 -std=c++17 -fopenmp -pthread 
 
 ifeq ($(BLAS_FLAG), OPENBLAS)
   include ../openblas.mk
@@ -16,7 +16,7 @@ TLIB_INC :=-I../include -Iinclude
 
 CXX_FLAGS += $(BLAS_FLAGS)
 INCS      += $(GTEST_INC) $(TLIB_INC)  $(BLAS_INC)
-LIBS      += $(GTEST_LIB) $(BLAS_LIB) -lgomp -lpthread
+LIBS      += $(GTEST_LIB) $(BLAS_LIB) #-lgomp # -lpthread
 
 CFILES2 = $(wildcard src/*.cpp)
 OBJS5   = $(notdir $(CFILES2))

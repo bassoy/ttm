@@ -72,11 +72,11 @@ static inline unsigned get_blas_threads()
 }
 
 
-static const auto hwthreads = std::thread::hardware_concurrency();
+static const unsigned hwthreads = omp_get_num_procs();
 
 inline void set_blas_threads_max()
 {
-  set_blas_threads(hwthreads); 
+  set_blas_threads(hwthreads); //hwthreads
 }
 
 inline void set_blas_threads_min()
@@ -86,10 +86,11 @@ inline void set_blas_threads_min()
 
 
 template<class size_t>
-inline void set_omp_threads(size_t num)
+inline void set_omp_threads(unsigned num)
 {
 #ifdef _OPENMP
-  omp_set_num_threads(num);
+    omp_set_num_threads(num);
+#else
 #endif
 }
 
@@ -97,7 +98,9 @@ inline void set_omp_threads(size_t num)
 inline void set_omp_threads_max()
 {
 #ifdef _OPENMP
-  omp_set_num_threads(hwthreads);
+    omp_set_num_threads(hwthreads);
+#else
+    return 1;  
 #endif
 }
 
@@ -106,7 +109,7 @@ inline unsigned get_omp_threads()
 #ifdef _OPENMP
     return omp_get_num_threads();
 #else
-    return 1;
+    return 1u;
 #endif
 }
 
@@ -278,7 +281,7 @@ inline void ttm(
 			)
 {
     set_blas_threads_max();
-    assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+    assert(get_blas_threads() > 1u || get_blas_threads() <= hwthreads);
 
     auto is_cm = pib[0] == 1;
 
@@ -379,12 +382,12 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
-    // mkl_set_dynamic(1);
     auto is_cm = pib[0] == 1;
 
-    if(!is_case<8>(p,q,pia)){
+    if(!is_case<8>(p,q,pia)){      
         set_blas_threads_max();
         assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -636,8 +639,6 @@ inline void ttm(
             )
 {
     auto is_cm = pib[0] == 1;
-
-    // mkl_set_dynamic(1);
     set_blas_threads_max();
     assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
 

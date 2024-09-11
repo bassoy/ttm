@@ -5,7 +5,7 @@ MKL_BLAS_DIR=${MKL_ROOT_DIR}/mkl/latest
 MKL_COMP_DIR=${MKL_ROOT_DIR}/compiler/latest/linux/compiler
 BLAS_INC=-I${MKL_BLAS_DIR}/include
 BLAS_LIB=-Wl,--start-group ${MKL_BLAS_DIR}/lib/intel64/libmkl_intel_ilp64.a ${MKL_BLAS_DIR}/lib/intel64/libmkl_intel_thread.a ${MKL_BLAS_DIR}/lib/intel64/libmkl_core.a ${MKL_COMP_DIR}/lib/intel64_lin/libiomp5.a -Wl,--end-group
-BLAS_LIB+=-lpthread -lm -ldl -m64 #-L${MKL_COMP_DIR}/lib -liomp5
+BLAS_LIB+=-lm -ldl -m64 #-L${MKL_COMP_DIR}/lib -liomp5 -lpthread 
 BLAS_FLAGS=-DMKL_ILP64 -m64 -DUSE_MKLBLAS
 
 

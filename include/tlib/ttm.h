@@ -88,11 +88,7 @@ inline void ttm(
     if(!detail::is_valid_strides(pia,pia+p, wa)) throw std::runtime_error("Error in tlib::tensor_times_matrix: stride vector of A is not valid.");
     if(!detail::is_valid_strides(pia,pia+p, wc)) throw std::runtime_error("Error in tlib::tensor_times_matrix: stride vector of C is not valid.");
 
-    detail::ttm(ep,sp,fp,
-                q,p,
-                a,na,wa,pia,
-                b,nb,   pib,
-                c,nc,wc    );
+    detail::ttm(ep,sp,fp, q,p,   a,na,wa,pia,   b,nb,pib,  c,nc,wc);
 }
 
 

@@ -66,6 +66,8 @@ public:
         auto alpha = value_t(1.0);
         auto beta  = value_t(0.0);
         
+        // std::cout << "layout=" << layout << ", transA=" << transA << ", transB=" << transB << ", m=" << m << ", n=" << n << ", k=" << k << ", lda=" << lda << ", ldb=" << ldb << ", ldc=" << ldc << std::endl; 
+        
 // Layout, CBLAS_TRANSPOSE, CBLAS_TRANSPOSE, m, n, k, alpha, double *const a, lda, double *const b, ldb,  beta, double *c, ldc);        
         if constexpr (std::is_same_v<value_t,float>)
             cblas_sgemm(layout, transA, transB, m,n,k, alpha, A,lda, B,ldb, beta, C, ldc);

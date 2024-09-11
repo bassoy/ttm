@@ -165,7 +165,7 @@ refc(matrix_type const& a, std::size_t i, std::size_t q)
 
     if(q == 2) return sum(a(i,N-1)) - sum(a(i,0)-1.0);
     else       return sum(a(M-1,i)) - sum(a(0,i)-1.0);
-};
+}
 
 
 /* \brief creates a reference value
@@ -191,7 +191,7 @@ refc(cube_type const& a, std::size_t i, std::size_t j, std::size_t q)
     if(q == 3) return sum(a(i,j,K-1)) - sum(a(i,j,0)-1.0);
     if(q == 2) return sum(a(i,N-1,j)) - sum(a(i,0,j)-1.0);
     else       return sum(a(M-1,i,j)) - sum(a(0,i,j)-1.0);
-};
+}
 
 
 /* \brief creates a reference value
@@ -209,7 +209,7 @@ inline value_type refc_general(std::vector<value_type> const& a, std::size_t j, 
     // j = i(1)*w(1) + ... + i(q-1)*w(q-1) + i(q+1)*w(q+1) + ... + i(p)*w(p)
 
     return sum(a[jq]) - sum(a[j]-1.0);
-};
+}
 
 
 template<class value_type, class size_type>
