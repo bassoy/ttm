@@ -38,18 +38,64 @@
 #include <mkl_cblas.h>
 #endif
 
+#ifdef USE_BLIS
+#include <blis.h>
+#include <cblas.h>
+#endif
+
+
+
 
 namespace tlib::detail {
 
+#ifdef USE_BLIS
+static rntm_t& get_blis_rntm()
+{
+    static rntm_t rntm = BLIS_RNTM_INITIALIZER;
+    return rntm;
+}
+#endif
+
 struct cblas_layout {};
 
-struct cblas_row : cblas_layout { static inline constexpr CBLAS_LAYOUT value = CblasRowMajor; };
-struct cblas_col : cblas_layout { static inline constexpr CBLAS_LAYOUT value = CblasColMajor; };
+struct cblas_row : cblas_layout { 
+#ifdef USE_BLIS
+    static inline constexpr CBLAS_ORDER value = CblasRowMajor; 
+#else
+    static inline constexpr CBLAS_LAYOUT value = CblasRowMajor; 
+#endif
+   };
+struct cblas_col : cblas_layout { 
+#ifdef USE_BLIS
+    static inline constexpr CBLAS_ORDER value = CblasColMajor; 
+#else
+    static inline constexpr CBLAS_LAYOUT value = CblasColMajor; 
+#endif
+};
 
-struct cblas_trans { static CBLAS_TRANSPOSE value; };
+struct cblas_trans { 
+#ifdef USE_BLIS
+    static trans_t value; 
+#else
+    static CBLAS_TRANSPOSE value; 
+#endif
+};
 
-struct cblas_tr   : public cblas_trans { static inline constexpr CBLAS_TRANSPOSE value = CblasTrans; };
-struct cblas_notr : public cblas_trans { static inline constexpr CBLAS_TRANSPOSE value = CblasNoTrans; };
+struct cblas_tr   : public cblas_trans { 
+#ifdef USE_BLIS
+    static inline constexpr trans_t value = BLIS_TRANSPOSE; 
+#else
+    static inline constexpr CBLAS_TRANSPOSE value = CblasTrans; 
+#endif
+};
+struct cblas_notr : public cblas_trans { 
+#ifdef USE_BLIS
+    static inline constexpr trans_t value = BLIS_NO_TRANSPOSE; 
+#else
+    static inline constexpr CBLAS_TRANSPOSE value = CblasNoTrans; 
+#endif
+
+};
 
 
 
@@ -57,7 +103,8 @@ struct cblas_notr : public cblas_trans { static inline constexpr CBLAS_TRANSPOSE
 template<class layout_t, class transA_t, class transB_t>
 class gemm_blas
 {
-public:
+public:   
+#ifdef USE_BLIS
     template<class value_t>
     static inline void run(const value_t* A, const value_t*B, value_t * C,
                            std::size_t const m,      std::size_t const n,      std::size_t const k, 
@@ -66,14 +113,46 @@ public:
         auto alpha = value_t(1.0);
         auto beta  = value_t(0.0);
         
-        // std::cout << "layout=" << layout << ", transA=" << transA << ", transB=" << transB << ", m=" << m << ", n=" << n << ", k=" << k << ", lda=" << lda << ", ldb=" << ldb << ", ldc=" << ldc << std::endl; 
+        auto& rntm = get_blis_rntm();
+      
+        std::size_t csa = 0, rsa = 0;
+        std::size_t csb = 0, rsb = 0;
+        std::size_t csc = 0, rsc = 0;
+        if (layout==CblasRowMajor){
+            csa = 1, rsa = lda; 
+            csb = 1, rsb = ldb; 
+            csc = 1, rsc = ldc; 
+        }
+        else{
+            csa = lda, rsa = 1; 
+            csb = ldb, rsb = 1; 
+            csc = ldc, rsc = 1;         
+        }
+
+        if constexpr (std::is_same_v<value_t,float>)
+            bli_sgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
+        else
+            bli_dgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
+    }
+#else
+    template<class value_t>
+    static inline void run(const value_t* A, const value_t*B, value_t * C,
+                           std::size_t const m,      std::size_t const n,      std::size_t const k, 
+                           std::size_t const lda,    std::size_t const ldb,    std::size_t const ldc)
+    {
+        auto alpha = value_t(1.0);
+        auto beta  = value_t(0.0);
         
-// Layout, CBLAS_TRANSPOSE, CBLAS_TRANSPOSE, m, n, k, alpha, double *const a, lda, double *const b, ldb,  beta, double *c, ldc);        
+        // std::cout << "layout=" << layout << ", transA=" << transA << ", transB=" << transB;
+        // std::cout << ", m=" << m << ", n=" << n << ", k=" << k << ", lda=" << lda << ", ldb=" << ldb << ", ldc=" << ldc << std::endl; 
+
         if constexpr (std::is_same_v<value_t,float>)
             cblas_sgemm(layout, transA, transB, m,n,k, alpha, A,lda, B,ldb, beta, C, ldc);
         else
-            cblas_dgemm(layout, transA, transB, m,n,k, alpha, A,lda, B,ldb, beta, C, ldc);
+            cblas_dgemm(layout, transA, transB, m,n,k, alpha, A,lda, B,ldb, beta, C, ldc);            
     }
+#endif
+      
 
 private:
     static constexpr inline auto layout = layout_t::value;
@@ -100,6 +179,32 @@ private:
     static constexpr inline auto layout = layout_t::value;
 
 public:
+
+#ifdef USE_BLIS
+   template<class value_t>
+    static inline void run(const value_t *A, const value_t *x, value_t* y, std::size_t m, std::size_t n, std::size_t lda)
+    {
+        auto alpha = value_t(1.0);
+        auto beta  = value_t(0.0);
+        
+        auto& rntm = get_blis_rntm();
+        
+        auto noTrA  = cblas_notr::value;
+        auto noConj = BLIS_NO_CONJUGATE;
+        
+        auto incx  = 1;
+        auto incy  = 1;        
+      
+        std::size_t csa = 0, rsa = 0;
+        if (layout==CblasRowMajor){ csa = 1, rsa = lda;}
+        else                      { csa = lda, rsa = 1;}
+
+        if constexpr (std::is_same_v<value_t,float>)
+            bli_sgemv_ex(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy,NULL,&rntm);
+        else
+            bli_dgemv_ex(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy,NULL,&rntm);
+    }
+#else
     template<class value_t>
     static inline void run(const value_t *A, const value_t *x, value_t* y, std::size_t m, std::size_t n, std::size_t lda)
     {
@@ -114,6 +219,7 @@ public:
         else
             cblas_dgemv(layout, noTrA, m,n, alpha, A,lda, x,incx, beta, y,incy);
     }
+#endif
 };
 
 using gemv_row = gemv_blas <cblas_row>;

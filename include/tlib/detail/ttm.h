@@ -43,6 +43,10 @@
 #include <mkl_cblas.h>
 #endif
 
+#ifdef USE_BLIS
+#include <blis.h>
+#include <cblas.h>
+#endif
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -51,7 +55,6 @@
 
 namespace tlib::detail{
 
-
 template<class size_t>
 inline void set_blas_threads(size_t num)
 {
@@ -59,6 +62,9 @@ inline void set_blas_threads(size_t num)
 	openblas_set_num_threads(num);
 #elif defined USE_MKLBLAS
 	mkl_set_num_threads(num);
+#elif defined USE_BLIS
+    auto& rntm = get_blis_rntm();
+    bli_rntm_set_num_threads_only(num,&rntm);
 #endif
 }
 
@@ -68,20 +74,37 @@ static inline unsigned get_blas_threads()
     return openblas_get_num_threads();
 #elif defined USE_MKLBLAS
     return mkl_get_max_threads();
+#elif defined USE_BLIS
+    auto& rntm = get_blis_rntm();
+    return bli_rntm_num_threads(&rntm);
 #endif
 }
+
+
 
 
 static const unsigned hwthreads = omp_get_num_procs();
 
 inline void set_blas_threads_max()
 {
-  set_blas_threads(hwthreads); //hwthreads
+#ifdef USE_BLIS
+    auto& rntm = get_blis_rntm();
+    bli_rntm_set_thread_impl( BLIS_OPENMP, &rntm );
+    bli_rntm_set_num_threads(hwthreads, &rntm );
+#else
+    set_blas_threads(hwthreads); //hwthreads
+#endif    
 }
 
 inline void set_blas_threads_min()
 {
-  set_blas_threads(1);
+#ifdef USE_BLIS
+    auto& rntm = get_blis_rntm();
+    bli_rntm_set_thread_impl( BLIS_SINGLE, &rntm );
+    //bli_rntm_set_num_threads( 1, &rntm );
+#else
+    set_blas_threads(1);
+#endif
 }
 
 
@@ -90,7 +113,6 @@ inline void set_omp_threads(unsigned num)
 {
 #ifdef _OPENMP
     omp_set_num_threads(num);
-#else
 #endif
 }
 
@@ -241,7 +263,7 @@ inline void ttm(
 			)
 {
     set_blas_threads_min();
-    //assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+    assert(get_blas_threads() == 1);
 
     auto is_cm = pib[0] == 1;
 
@@ -319,7 +341,7 @@ inline void ttm(
         const value_t *b, size_t const*const nb, size_t const*const pib,
               value_t *c, size_t const*const nc, size_t const*const wc
         )
-{
+{ 
     auto is_cm = pib[0] == 1;
 
     if(!is_case<8>(p,q,pia)){
@@ -331,6 +353,7 @@ inline void ttm(
             mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
 	}
 	else {
+
         assert(is_case<8>(p,q,pia));
         assert(p>2);
         assert(q>0);
@@ -355,18 +378,29 @@ inline void ttm(
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
 
-#pragma omp parallel for schedule(dynamic) num_threads(hwthreads) firstprivate(qh,num,na,wa,pia,nc,wc,a,b,c,gemm_col, gemm_row, is_cm)
+        unsigned incr = 0;
+
+#ifdef USE_BLIS
+            set_blas_threads_min();
+            //std::cout << "OpenMP-Threads: " << get_omp_threads() << std::endl;
+#endif  
+
+#pragma omp parallel for num_threads(hwthreads) firstprivate(qh,num,na,wa,pia,nc,wc,a,b,c,gemm_col, gemm_row, is_cm)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
-            auto cc = c+k*wcq;
+            auto cc = c+k*wcq;          
+            
+            //if(incr++==0) std::cout << "OpenMP-Threads: " << get_omp_threads() << std::endl;
 
+#ifndef USE_BLIS
             set_blas_threads_min();
-            assert(get_omp_threads()==hwthreads);
             assert(get_blas_threads()==1);
+#endif
 
             if(is_cm) multiple_gemm_with_slices(gemm_col, qh, qh,  aa,na,wa,pia,   b,  cc,nc,wc);
             else      multiple_gemm_with_slices(gemm_row, qh, qh,  aa,na,wa,pia,   b,  cc,nc,wc);
-        }
+
+        }        
 	}
 }
 
@@ -394,6 +428,7 @@ inline void ttm(
             mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
     }
     else {
+    
         assert(is_case<8>(p,q,pia));
         assert(p>2);
         assert(q>0);
@@ -429,13 +464,15 @@ inline void ttm(
                 auto cc = c+k*wco + j*wci;
 
                 set_blas_threads_min();
-                assert(get_omp_threads ()==hwthreads);
                 assert(get_blas_threads()==1);
+                assert(get_omp_threads ()==hwthreads);
 
                 if(is_cm) gemm_col(aa, b, cc);
                 else      gemm_row(aa, b, cc);
             }
+
         }
+        
     }
 }
 
@@ -453,12 +490,11 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
-    // mkl_set_dynamic(1);
     auto is_cm = pib[0] == 1;
-
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
         assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -499,9 +535,10 @@ inline void ttm(
                 auto aa = a+k*wao + j*wai;
                 auto cc = c+k*wco + j*wci;
 
+#ifndef USE_BLIS
                 set_blas_threads_max();
                 assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
-
+#endif
 
                 if(is_cm) gemm_col(aa, b, cc);
                 else      gemm_row(aa, b, cc);
@@ -526,12 +563,11 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
-    // mkl_set_dynamic(1);
     auto is_cm = pib[0] == 1;
-
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
         assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -576,9 +612,10 @@ inline void ttm(
                 auto aa = a+k*wao + j*wai;
                 auto cc = c+k*wco + j*wci;
 
+#ifndef USE_BLIS
                 set_blas_threads(blasthreads);
                 assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
-
+#endif
 
                 if(is_cm) gemm_col(aa, b, cc);
                 else      gemm_row(aa, b, cc);
@@ -600,10 +637,9 @@ inline void ttm(
                   value_t *c, size_t const*const nc, size_t const*const wc
             )
 {
-    auto is_cm = pib[0] == 1;
-
     set_blas_threads_min();
 
+    auto is_cm = pib[0] == 1;
     if(!is_case<8>(p,q,pia)){
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
@@ -638,10 +674,11 @@ inline void ttm(
                   value_t *c, size_t const*const nc, size_t const*const wc
             )
 {
-    auto is_cm = pib[0] == 1;
     set_blas_threads_max();
     assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+    
 
+    auto is_cm = pib[0] == 1;
     if(!is_case<8>(p,q,pia)){
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
@@ -686,6 +723,9 @@ inline void ttm(
             mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
     }
     else {
+    
+
+    
         assert(is_case<8>(p,q,pia));
         assert(q>0);
         assert(p>2);
@@ -715,11 +755,14 @@ inline void ttm(
             auto cc = c+k*wcq;
 
             set_blas_threads_min();
-            assert(get_omp_threads ()==hwthreads);
             assert(get_blas_threads()==1);
+
+            assert(get_omp_threads()==hwthreads);
+            
             if(is_cm) gemm_col(aa, b, cc);
             else      gemm_row(aa, b, cc);
-        }
+
+        }      
     }
 }
 
@@ -775,9 +818,10 @@ inline void ttm(
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
 
+#ifndef USE_BLIS
             set_blas_threads_max();
             assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
-
+#endif
             if(is_cm) gemm_col(aa, b, cc);
             else      gemm_row(aa, b, cc);
         }
@@ -838,8 +882,10 @@ inline void ttm(
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
 
+#ifndef USE_BLIS
             set_blas_threads(blasthreads);
             assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+#endif 
 
             if(is_cm) gemm_col(aa, b, cc);
             else      gemm_row(aa, b, cc);

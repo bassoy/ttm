@@ -1,12 +1,14 @@
 CXX :=g++
 #CXX :=clang++-12 
 
-CXX_FLAGS +=-Wextra -Wall -Wpedantic -O3 -std=c++17 -fopenmp -pthread 
+CXX_FLAGS +=-Wextra -Wall -O3 -std=c++2a -fopenmp -pthread  # -Wpedantic 
 
 ifeq ($(BLAS_FLAG), OPENBLAS)
   include ../openblas.mk
 else ifeq ($(BLAS_FLAG), MKL)
   include ../mkl.mk
+else ifeq ($(BLAS_FLAG), BLIS)
+  include ../blis.mk
 endif
 
 
@@ -15,7 +17,7 @@ include gtest.mk
 TLIB_INC :=-I../include -Iinclude
 
 CXX_FLAGS += $(BLAS_FLAGS)
-INCS      += $(GTEST_INC) $(TLIB_INC)  $(BLAS_INC)
+INCS      += $(GTEST_INC) $(TLIB_INC) $(BLAS_INC)
 LIBS      += $(GTEST_LIB) $(BLAS_LIB) #-lgomp # -lpthread
 
 CFILES2 = $(wildcard src/*.cpp)
