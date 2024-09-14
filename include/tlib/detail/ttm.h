@@ -38,7 +38,7 @@
 #include <cblas.h>
 #endif
 
-#ifdef USE_MKLBLAS
+#ifdef USE_MKL
 #include <mkl.h>
 #include <mkl_cblas.h>
 #endif
@@ -60,11 +60,12 @@ inline void set_blas_threads(size_t num)
 {
 #ifdef USE_OPENBLAS
 	openblas_set_num_threads(num);
-#elif defined USE_MKLBLAS
+#elif defined USE_MKL
 	mkl_set_num_threads(num);
 #elif defined USE_BLIS
-    auto& rntm = get_blis_rntm();
-    bli_rntm_set_num_threads_only(num,&rntm);
+    //auto& rntm = get_blis_rntm();
+    //bli_rntm_set_num_threads_only(num,&rntm);
+    bli_thread_set_num_threads(num);
 #endif
 }
 
@@ -72,11 +73,12 @@ static inline unsigned get_blas_threads()
 {
 #ifdef USE_OPENBLAS
     return openblas_get_num_threads();
-#elif defined USE_MKLBLAS
+#elif defined USE_MKL
     return mkl_get_max_threads();
 #elif defined USE_BLIS
-    auto& rntm = get_blis_rntm();
-    return bli_rntm_num_threads(&rntm);
+    return bli_thread_get_num_threads();
+    //auto& rntm = get_blis_rntm();
+    //return bli_rntm_num_threads(&rntm);
 #endif
 }
 
@@ -88,9 +90,10 @@ static const unsigned hwthreads = omp_get_num_procs();
 inline void set_blas_threads_max()
 {
 #ifdef USE_BLIS
-    auto& rntm = get_blis_rntm();
-    bli_rntm_set_thread_impl( BLIS_OPENMP, &rntm );
-    bli_rntm_set_num_threads(hwthreads, &rntm );
+    //auto& rntm = get_blis_rntm();
+    //bli_rntm_set_thread_impl( BLIS_OPENMP, &rntm );
+    //bli_rntm_set_num_threads(hwthreads, &rntm );
+    set_blas_threads(hwthreads);
 #else
     set_blas_threads(hwthreads); //hwthreads
 #endif    
@@ -99,8 +102,8 @@ inline void set_blas_threads_max()
 inline void set_blas_threads_min()
 {
 #ifdef USE_BLIS
-    auto& rntm = get_blis_rntm();
-    bli_rntm_set_thread_impl( BLIS_SINGLE, &rntm );
+    //auto& rntm = get_blis_rntm();
+    //bli_rntm_set_thread_impl( BLIS_SINGLE, &rntm );
     //bli_rntm_set_num_threads( 1, &rntm );
 #else
     set_blas_threads(1);
@@ -378,12 +381,7 @@ inline void ttm(
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
 
-        unsigned incr = 0;
-
-#ifdef USE_BLIS
-            set_blas_threads_min();
-            //std::cout << "OpenMP-Threads: " << get_omp_threads() << std::endl;
-#endif  
+        //unsigned incr = 0;
 
 #pragma omp parallel for num_threads(hwthreads) firstprivate(qh,num,na,wa,pia,nc,wc,a,b,c,gemm_col, gemm_row, is_cm)
         for(size_t k = 0u; k < num; ++k){
@@ -463,8 +461,10 @@ inline void ttm(
                 auto aa = a+k*wao + j*wai;
                 auto cc = c+k*wco + j*wci;
 
+#ifndef USE_BLIS
                 set_blas_threads_min();
                 assert(get_blas_threads()==1);
+#endif 
                 assert(get_omp_threads ()==hwthreads);
 
                 if(is_cm) gemm_col(aa, b, cc);
@@ -754,9 +754,10 @@ inline void ttm(
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
 
+#ifndef USE_BLIS
             set_blas_threads_min();
             assert(get_blas_threads()==1);
-
+#endif
             assert(get_omp_threads()==hwthreads);
             
             if(is_cm) gemm_col(aa, b, cc);
@@ -937,7 +938,7 @@ inline void ttm(
         auto m      = nc[q-1];
         auto nq     = na[q-1];
 
-#ifdef USE_MKLBLAS
+#ifdef USE_MKL
         using index_t = MKL_INT;
         using vector  = std::vector<value_t>;
         using ivector = std::vector<index_t>;

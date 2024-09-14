@@ -33,7 +33,7 @@
 #include <cblas.h>
 #endif
 
-#ifdef USE_MKLBLAS
+#ifdef USE_MKL
 #include <mkl.h>
 #include <mkl_cblas.h>
 #endif
@@ -47,7 +47,7 @@
 
 
 namespace tlib::detail {
-
+/*
 #ifdef USE_BLIS
 static rntm_t& get_blis_rntm()
 {
@@ -55,6 +55,7 @@ static rntm_t& get_blis_rntm()
     return rntm;
 }
 #endif
+*/
 
 struct cblas_layout {};
 
@@ -113,7 +114,7 @@ public:
         auto alpha = value_t(1.0);
         auto beta  = value_t(0.0);
         
-        auto& rntm = get_blis_rntm();
+        //auto& rntm = get_blis_rntm();
       
         std::size_t csa = 0, rsa = 0;
         std::size_t csb = 0, rsb = 0;
@@ -130,9 +131,11 @@ public:
         }
 
         if constexpr (std::is_same_v<value_t,float>)
-            bli_sgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
+          bli_sgemm(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc);
+            //bli_sgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
         else
-            bli_dgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
+          bli_dgemm(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc);
+            //bli_dgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
     }
 #else
     template<class value_t>
@@ -187,7 +190,7 @@ public:
         auto alpha = value_t(1.0);
         auto beta  = value_t(0.0);
         
-        auto& rntm = get_blis_rntm();
+        //auto& rntm = get_blis_rntm();
         
         auto noTrA  = cblas_notr::value;
         auto noConj = BLIS_NO_CONJUGATE;
@@ -200,9 +203,12 @@ public:
         else                      { csa = lda, rsa = 1;}
 
         if constexpr (std::is_same_v<value_t,float>)
-            bli_sgemv_ex(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy,NULL,&rntm);
+            bli_sgemv(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy);
+            //bli_sgemv_ex(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy,NULL,&rntm);
+            
         else
-            bli_dgemv_ex(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy,NULL,&rntm);
+          bli_dgemv(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy);
+          //bli_dgemv_ex(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy,NULL,&rntm);
     }
 #else
     template<class value_t>
