@@ -108,26 +108,21 @@ public:
 #ifdef USE_BLIS
     template<class value_t>
     static inline void run(const value_t* A, const value_t*B, value_t * C,
-                           std::size_t const m,      std::size_t const n,      std::size_t const k, 
-                           std::size_t const lda,    std::size_t const ldb,    std::size_t const ldc)
+                           dim_t const m,      dim_t const n,      dim_t const k, 
+                           inc_t const lda,    inc_t const ldb,    inc_t const ldc)
     {
         auto alpha = value_t(1.0);
         auto beta  = value_t(0.0);
         
         //auto& rntm = get_blis_rntm();
-      
-        std::size_t csa = 0, rsa = 0;
-        std::size_t csb = 0, rsb = 0;
-        std::size_t csc = 0, rsc = 0;
+
+        inc_t csa = lda, rsa = 1;
+        inc_t csb = ldb, rsb = 1;
+        inc_t csc = ldc, rsc = 1;
         if (layout==CblasRowMajor){
             csa = 1, rsa = lda; 
             csb = 1, rsb = ldb; 
             csc = 1, rsc = ldc; 
-        }
-        else{
-            csa = lda, rsa = 1; 
-            csb = ldb, rsb = 1; 
-            csc = ldc, rsc = 1;         
         }
 
         if constexpr (std::is_same_v<value_t,float>)
@@ -137,11 +132,28 @@ public:
           bli_dgemm(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc);
             //bli_dgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
     }
+#elif USE_MKL
+    template<class value_t>
+    static inline void run(const value_t* A, const value_t*B, value_t * C,
+                           MKL_INT const m,      MKL_INT const n,      MKL_INT const k, 
+                           MKL_INT const lda,    MKL_INT const ldb,    MKL_INT const ldc)
+    {
+        auto alpha = value_t(1.0);
+        auto beta  = value_t(0.0);
+        
+        // std::cout << "layout=" << layout << ", transA=" << transA << ", transB=" << transB;
+        // std::cout << ", m=" << m << ", n=" << n << ", k=" << k << ", lda=" << lda << ", ldb=" << ldb << ", ldc=" << ldc << std::endl; 
+
+        if constexpr (std::is_same_v<value_t,float>)
+            cblas_sgemm(layout, transA, transB, m,n,k, alpha, A,lda, B,ldb, beta, C, ldc);
+        else
+            cblas_dgemm(layout, transA, transB, m,n,k, alpha, A,lda, B,ldb, beta, C, ldc);            
+    }
 #else
     template<class value_t>
     static inline void run(const value_t* A, const value_t*B, value_t * C,
-                           std::size_t const m,      std::size_t const n,      std::size_t const k, 
-                           std::size_t const lda,    std::size_t const ldb,    std::size_t const ldc)
+                           blasint const m,      blasint const n,      blasint const k, 
+                           blasint const lda,    blasint const ldb,    blasint const ldc)
     {
         auto alpha = value_t(1.0);
         auto beta  = value_t(0.0);
