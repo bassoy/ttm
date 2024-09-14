@@ -52,8 +52,47 @@
 #include <omp.h>
 #endif
 
+#include <cstdlib>
+#include <cstdio>
+
+static inline unsigned get_number_cores() 
+{
+
+    const char* command_sockets = "lscpu | grep 'Socket' | cut -d':' -f2 | tr -d ' '";
+    const char* command_cores   = "lscpu | grep 'socket' | cut -d':' -f2 | tr -d ' '";
+
+    unsigned num_sockets = 0;
+    unsigned num_cores_per_socket = 0;
+    
+    char output[10];
+
+    FILE* fp = nullptr;
+    fp = popen(command_sockets, "r");
+    if (fp) {
+        if(std::fgets(output, sizeof(output), fp) != nullptr)
+            num_sockets = std::atoi(output);
+        pclose(fp);
+    }
+    fp = popen(command_cores, "r");
+    if (fp) {
+        if(std::fgets(output, sizeof(output), fp) != nullptr)
+            num_cores_per_socket = std::atoi(output);
+        pclose(fp);
+    } 
+
+    unsigned num_cores = num_sockets*num_cores_per_socket;
+    unsigned num_logical_cores = std::thread::hardware_concurrency();
+    
+    if(0u == num_cores || num_cores > num_logical_cores)
+        num_cores = num_logical_cores;
+
+    return num_cores;
+}
 
 namespace tlib::detail{
+
+static const unsigned hwthreads = get_number_cores();
+
 
 template<class size_t>
 inline void set_blas_threads(size_t num)
@@ -63,8 +102,6 @@ inline void set_blas_threads(size_t num)
 #elif defined USE_MKL
 	mkl_set_num_threads(num);
 #elif defined USE_BLIS
-    //auto& rntm = get_blis_rntm();
-    //bli_rntm_set_num_threads_only(num,&rntm);
     bli_thread_set_num_threads(num);
 #endif
 }
@@ -77,23 +114,16 @@ static inline unsigned get_blas_threads()
     return mkl_get_max_threads();
 #elif defined USE_BLIS
     return bli_thread_get_num_threads();
-    //auto& rntm = get_blis_rntm();
-    //return bli_rntm_num_threads(&rntm);
 #endif
 }
 
 
 
 
-static const unsigned hwthreads = omp_get_num_procs();
-
 inline void set_blas_threads_max()
 {
 #ifdef USE_BLIS
-    //auto& rntm = get_blis_rntm();
-    //bli_rntm_set_thread_impl( BLIS_OPENMP, &rntm );
-    //bli_rntm_set_num_threads(hwthreads, &rntm );
-    //set_blas_threads(hwthreads);
+    set_blas_threads(hwthreads);
 #else
     set_blas_threads(hwthreads); //hwthreads
 #endif    
@@ -102,9 +132,6 @@ inline void set_blas_threads_max()
 inline void set_blas_threads_min()
 {
 #ifdef USE_BLIS
-    //auto& rntm = get_blis_rntm();
-    //bli_rntm_set_thread_impl( BLIS_SINGLE, &rntm );
-    //bli_rntm_set_num_threads( 1, &rntm );
     set_blas_threads(1);
 #else
     set_blas_threads(1);
