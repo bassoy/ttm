@@ -126,10 +126,10 @@ public:
         }
 
         if constexpr (std::is_same_v<value_t,float>)
-          bli_sgemm(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc);
+          bli_sgemm(transA, transB, m,n,k, &alpha, (value_t*)A,rsa,csa, (value_t*)B,rsb,csb, &beta, C,rsc,csc);
             //bli_sgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
         else
-          bli_dgemm(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc);
+          bli_dgemm(transA, transB, m,n,k, &alpha, (value_t*)A,rsa,csa, (value_t*)B,rsb,csb, &beta, C,rsc,csc);
             //bli_dgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
     }
 #elif USE_MKL
@@ -215,11 +215,11 @@ public:
         else                      { csa = lda, rsa = 1;}
 
         if constexpr (std::is_same_v<value_t,float>)
-            bli_sgemv(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy);
+            bli_sgemv(noTrA,noConj, m,n, &alpha, (value_t*)A,rsa,csa, (value_t*)x,incx, &beta, y,incy);
             //bli_sgemv_ex(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy,NULL,&rntm);
             
         else
-          bli_dgemv(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy);
+            bli_dgemv(noTrA,noConj, m,n, &alpha, (value_t*)A,rsa,csa, (value_t*)x,incx, &beta, y,incy);
           //bli_dgemv_ex(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy,NULL,&rntm);
     }
 #else

@@ -65,7 +65,7 @@ inline void set_blas_threads(size_t num)
 #elif defined USE_BLIS
     //auto& rntm = get_blis_rntm();
     //bli_rntm_set_num_threads_only(num,&rntm);
-    //bli_thread_set_num_threads(num);
+    bli_thread_set_num_threads(num);
 #endif
 }
 
@@ -105,7 +105,7 @@ inline void set_blas_threads_min()
     //auto& rntm = get_blis_rntm();
     //bli_rntm_set_thread_impl( BLIS_SINGLE, &rntm );
     //bli_rntm_set_num_threads( 1, &rntm );
-    //set_blas_threads(1);
+    set_blas_threads(1);
 #else
     set_blas_threads(1);
 #endif
