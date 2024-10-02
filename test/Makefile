@@ -1,6 +1,9 @@
 CXX :=g++
 #CXX :=clang++-12 
 
+# call
+# make -j BLAS_FLAG=BLIS MACH_FLAG=TUHH 
+
 CXX_FLAGS +=-Wextra -Wall -O3 -std=c++2a -fopenmp -pthread  # -Wpedantic 
 
 ifeq ($(BLAS_FLAG), OPENBLAS)

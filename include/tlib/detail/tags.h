@@ -27,12 +27,15 @@ struct omp_taskloop_t   {}; // omp_taskloops with single threaded gemm
 struct omp_forloop_t    {}; // omp_for with single threaded gemm
 struct omp_forloop_and_threaded_gemm_t  {}; // omp_for with multi-threaded gemm
 struct batched_gemm_t   {}; // multithreaded batched gemm with collapsed loops
+struct depends_t        {};
 
 inline constexpr sequential_t     sequential;
 inline constexpr threaded_gemm_t  threaded_gemm;
 inline constexpr omp_taskloop_t   omp_taskloop;
 inline constexpr omp_forloop_t    omp_forloop;
 inline constexpr batched_gemm_t   batched_gemm;
+inline constexpr depends_t        depends;
+
 }
 
 
@@ -40,7 +43,10 @@ namespace tlib::slicing_policy
 {
 struct slice_t     {};
 struct subtensor_t {};
+struct depends_t      {};
 
+
+inline constexpr depends_t   depends;
 inline constexpr slice_t     slice;
 inline constexpr subtensor_t subtensor;
 
@@ -49,10 +55,12 @@ inline constexpr subtensor_t subtensor;
 
 namespace tlib::fusion_policy
 {
-struct none_t   {};
-struct outer_t  {};
-struct all_t    {};
+struct depends_t {};
+struct none_t    {};
+struct outer_t   {};
+struct all_t     {};
 
+inline constexpr depends_t depends;
 inline constexpr none_t    none;
 inline constexpr outer_t   outer;
 inline constexpr all_t     all;

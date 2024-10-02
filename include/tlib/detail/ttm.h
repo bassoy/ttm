@@ -912,7 +912,6 @@ inline void ttm(
 
 
 
-
 template<class value_t, class size_t>
 inline void ttm(
         parallel_policy::batched_gemm_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
@@ -1000,5 +999,87 @@ inline void ttm(
 #endif
     }
 }
+
+
+
+
+template<class value_t, class size_t>
+inline void ttm(
+        parallel_policy::depends_t, slicing_policy::depends_t, fusion_policy::depends_t,
+        unsigned const q, unsigned const p,
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b, size_t const*const nb, size_t const*const pib,
+        value_t *c, size_t const*const nc, size_t const*const wc
+        )
+{
+
+    
+    if(!is_case<8>(p,q,pia)){
+        auto is_cm = pib[0] == 1;
+        set_blas_threads_max();
+        if(is_cm)
+            mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
+        else
+            mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+            
+        return;
+    }
+    
+
+//=> compute `par-loop-count` with `par-loop` with `qD` slices
+//=> IF `par-loop-count` > `num-procs` THEN use `par-loop` with `qD` slices.
+//=> ELSE compute `par-loop-count` with `par-loop` with `2D` slices 
+//    => IF `par-loop-count` > `num-procs` THEN use `par-loop` with `2D` slices
+//    => ELSE use `par-gemm` with `qD` slices (`par-gemm` with `2D` slices does perform for non-symmetric and symmetric tensor shapes)
+  
+    
+    
+    assert(is_case<8>(p,q,pia));
+    assert(q>0);
+    assert(p>2);
+    
+    auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+
+    // inner = n[pi[2]] * ... * n[pi[qh-1]] with pi[qh] = q
+    auto const inner = product(na, pia, 2, qh);    
+      
+    // outer = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
+    auto const outer = product(na, pia, qh+1,p+1);
+        
+    if( outer >= hwthreads){
+        ttm(parallel_policy::omp_forloop, slicing_policy::subtensor, fusion_policy::outer,
+            q, p,
+            a, na, wa, pia,
+            b, nb,     pib,
+            c, nc, wc );
+    }
+    else {
+
+      if(inner*outer >= hwthreads) {
+          ttm(parallel_policy::omp_forloop, slicing_policy::slice, fusion_policy::all,
+              q, p,
+              a, na, wa, pia,
+              b, nb,     pib,
+              c, nc, wc );        
+      }
+      else{
+          ttm(parallel_policy::threaded_gemm, slicing_policy::subtensor, fusion_policy::none,
+              q, p,
+              a, na, wa, pia,
+              b, nb,     pib,
+              c, nc, wc );
+      }
+    }
+      
+    
+
+
+
+
+    
+    
+
+}
+
 
 } // namespace tlib::detail
