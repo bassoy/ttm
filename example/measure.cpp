@@ -1,15 +1,3 @@
-/*
-TLIB_DIR=..
-TLIB_INC="-I${TLIB_DIR}/include"
-
-INCS="${TLIB_INC} ${MKL_BLAS_INC}"
-LIBS="${MKL_BLAS_LIB}"
-FLAGS="${MKL_BLAS_FLAGS} -DUSE_MKLBLAS"
-
-
-g++ ${INCS} -std=c++17 -Ofast -fopenmp interface1.cpp ${LIBS} ${FLAGS} -o interface1 && ./interface1
-*/
-
 #include <tlib/ttm.h>
 
 #include <vector>
@@ -109,43 +97,13 @@ inline void measure(unsigned q,
         std::chrono::duration<double> duration = end - start; 
         time += duration.count();
     }
-    
-    
 
     const auto na = A.shape();
     const auto nb = B.shape();
     const auto num_elems = std::accumulate(na.begin(), na.end(), 1.0, std::multiplies<double>());
     const auto avg_time_s = time/double(iters);
     const auto gflops = get_gflops(num_elems,nb[0],nb[1]);
-    const auto gbyte = sizeof(double) * double(A.data().size()+B.data().size()+C.data().size()) * 1e-9;
-
-
-    if(q > 1 && q < A.order()){
-        const auto inner = std::accumulate(na.begin(),   na.begin()+q-1, 1.0, std::multiplies<double>());
-        const auto outer = std::accumulate(na.begin()+q, na.end(),     1.0, std::multiplies<double>());
-        if(std::is_same_v<slicing_policy,tlib::slicing_policy::subtensor_t>){
-            const auto rowsA = inner;
-            const auto colsA = na[q-1];
-            const auto rowsB = nb[1];
-            const auto rowsC = rowsA;
-            const auto colsC = nb[0];
-            std::cout << "Par Dim: l = " << outer << std::endl; 
-            std::cout << "Gemm Dims: m = " << rowsC << ", n = " << colsC << ", k = " << colsA << ", ";
-            std::cout << "m*k = " << rowsC*colsA << ", m*k/l = " << double(rowsC*colsA)/double(outer) << ", m/k = " << double(rowsC)/double(colsA) << std::endl;
-
-        }
-
-        if(std::is_same_v<slicing_policy,tlib::slicing_policy::slice_t>){
-            const auto rowsA = na[0];
-            const auto colsA = na[q-1];
-            const auto rowsB = nb[1];
-            const auto rowsC = rowsA;
-            const auto colsC = nb[0];
-            std::cout << "Gemm Dims: m = " << rowsC << ", n = " << colsC << ", k = " << colsA << ", m*n*k = " << rowsC*colsC*colsA << std::endl;
-            std::cout << "Par Dim: l = " << inner*outer << std::endl; 
-        }
-    }
-
+    const auto gbyte = sizeof(value) * double(A.data().size()+B.data().size()+C.data().size()) * 1e-9;
 
     std::cout << "Memory: " << gbyte << " [GB]" << std::endl;
     std::cout << "Time : " << avg_time_s << " [s]" << std::endl;
@@ -153,18 +111,28 @@ inline void measure(unsigned q,
     std::cout << "Performance : " <<  gflops/avg_time_s << " [gflops/s]" << std::endl;   
 }
 
+
+/*
+./measure method order contraction dim1 dim2 <dim3,...>
+./measure 7      4     2           256  256 256 256 
+*/
+
 int main(int argc, char* argv[]) 
 {
 
-    using value    = float;
+    using value    = double;
     using tensor   = tlib::tensor<value>;     // or std::array<value_t,N>
     using shape    = typename tensor::shape_t;
 
-    assert(argc > 3);
-    const auto p = std::stoi(argv[1]);
-    assert(p >= 2 && p <= 10);  
+    assert(argc > 4);
+    const auto p = std::stoi(argv[2]);
+    assert(p >= 2 && p <= 10);
+    
+    assert(argc == p+4);
+    const auto method = std::stoi(argv[1]);
+    assert(method > 0 && method < 8);
 
-    const auto q = std::stoi(argv[2]);
+    const auto q = std::stoi(argv[3]);
     assert(q >= 1 && q <= int(p));
     
     const auto astring = std::string("A[") + add_comma(get_index_a(q,p)) + "]";
@@ -172,14 +140,14 @@ int main(int argc, char* argv[])
     const auto cstring = std::string("C[") + add_comma(get_index_c(q,p)) + "]";
     const auto mstring = std::string("x(") + std::to_string(q) + ")";
     
-    std::cout << "ttm : " << cstring << " = " << astring << " " << mstring << " " << bstring << ";" << std::endl;
+    std::cout << std::endl << "ttm : " << cstring << " = " << astring << " " << mstring << " " << bstring << ";" << std::endl << std::endl;
 
     auto na = shape(p,0);
     auto nb = shape(2u,0);
     auto nc = shape(p,0);
     for(auto i = 0; i < p; ++i){
-        na[i] = std::stoi(argv[i+3]);
-        nc[i] = std::stoi(argv[i+3]);
+        na[i] = std::stoi(argv[i+4]);
+        nc[i] = std::stoi(argv[i+4]);
         assert(na[i] >= 1);
     }
     nb[0] = na[q-1];
@@ -201,21 +169,41 @@ int main(int argc, char* argv[])
     std::iota(A.begin(),A.end(),1);
     std::fill(B.begin(),B.end(),1);
     
-    //std::cout << "Measure: <par-loop | slice-2d>" << std::endl;
-    //measure(q, A, B, C, tlib::parallel_policy::omp_forloop,   tlib::slicing_policy::slice,     tlib::fusion_policy::all  );
-    //std::cout << "---------" << std::endl << std::endl;
+    if(method == 1 || method == 7){
+      std::cout << "Algorithm: <par-loop | slice-2d, all>" << std::endl;
+      measure(q, A, B, C, tlib::parallel_policy::omp_forloop,   tlib::slicing_policy::slice,     tlib::fusion_policy::all  );
+      std::cout << "---------" << std::endl << std::endl;
+    }
     
-    std::cout << "Measure: <par-loop | slice-qd>" << std::endl;
-    measure(q, A, B, C, tlib::parallel_policy::omp_forloop,   tlib::slicing_policy::subtensor, tlib::fusion_policy::outer);
-    std::cout << "---------" << std::endl << std::endl;
+    if(method == 2 || method == 7){
+      std::cout << "Algorithm: <par-loop | slice-qd, all>" << std::endl;
+      measure(q, A, B, C, tlib::parallel_policy::omp_forloop,   tlib::slicing_policy::subtensor, tlib::fusion_policy::outer);
+      std::cout << "---------" << std::endl << std::endl;
+    }
     
-    //std::cout << "Measure: <par-gemm | slice-2d>" << std::endl;
-    //measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::slice,     tlib::fusion_policy::none );
-    //std::cout << "---------" << std::endl << std::endl;
+    if(method == 3 || method == 7){
+      std::cout << "Algorithm: <par-gemm | slice-2d, none>" << std::endl;
+      measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::slice,     tlib::fusion_policy::none );
+      std::cout << "---------" << std::endl << std::endl; 
+    }
     
-    std::cout << "Measure: <par-gemm | slice-qd>" << std::endl;
-    measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::subtensor, tlib::fusion_policy::none );
-    std::cout << "---------" << std::endl << std::endl;
-     
+    if(method == 4 || method == 7){
+      std::cout << "Algorithm: <par-gemm | slice-2d, all>" << std::endl;
+      measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::slice,     tlib::fusion_policy::all );
+      std::cout << "---------" << std::endl << std::endl; 
+    }    
+
+
+    if(method == 5 || method == 7){
+      std::cout << "Algorithm: <par-gemm | slice-qd, none>" << std::endl;
+      measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::subtensor, tlib::fusion_policy::none );
+      std::cout << "---------" << std::endl << std::endl;  
+    } 
+    
+    if(method == 6 || method == 7){
+      std::cout << "Algorithm: <par-gemm | slice-qd, all>" << std::endl;
+      measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::subtensor, tlib::fusion_policy::outer );
+      std::cout << "---------" << std::endl << std::endl;  
+    } 
     
 }
