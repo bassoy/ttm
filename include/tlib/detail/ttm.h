@@ -91,7 +91,7 @@ static inline unsigned get_number_cores()
 
 namespace tlib::detail{
 
-static const unsigned hwthreads = get_number_cores();
+static const unsigned cores = get_number_cores();
 
 
 template<class size_t>
@@ -121,7 +121,7 @@ static inline unsigned get_blas_threads()
 
 inline void set_blas_threads_max()
 {
-    set_blas_threads(hwthreads);
+    set_blas_threads(cores);
 }
 
 inline void set_blas_threads_min()
@@ -142,7 +142,7 @@ inline void set_omp_threads(unsigned num)
 inline void set_omp_threads_max()
 {
 #ifdef _OPENMP
-    omp_set_num_threads(hwthreads);
+    omp_set_num_threads(cores);
 #else
     return 1;  
 #endif
@@ -329,7 +329,7 @@ inline void ttm(
 			)
 {
     set_blas_threads_max();
-    assert(get_blas_threads() > 1u || get_blas_threads() <= hwthreads);
+    assert(get_blas_threads() > 1u || get_blas_threads() <= cores);
 
     auto is_cm = pib[0] == 1;
 
@@ -360,15 +360,14 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::threaded_gemm_t, slicing_policy::slice_t, fusion_policy::all_t,
-        unsigned const q, unsigned const p,
-        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
-        const value_t *b, size_t const*const nb, size_t const*const pib,
-              value_t *c, size_t const*const nc, size_t const*const wc
-        )
+            parallel_policy::threaded_gemm_t, slicing_policy::slice_t, fusion_policy::all_t,
+            unsigned const q, unsigned const p,
+            const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+            const value_t *b, size_t const*const nb, size_t const*const pib,
+            value_t *c, size_t const*const nc, size_t const*const wc)
 {
     set_blas_threads_max();
-    assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+    assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
         
     const auto is_cm = pib[0] == 1;
 
@@ -440,7 +439,7 @@ inline void ttm(
 
     if(!is_case<8>(p,q,pia)){  
         set_blas_threads_max();
-        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+        assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -471,7 +470,7 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq,m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
-#pragma omp parallel for schedule(static) num_threads(hwthreads) proc_bind(spread)
+#pragma omp parallel for schedule(static) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;          
@@ -502,7 +501,7 @@ inline void ttm(
 
     if(!is_case<8>(p,q,pia)){    
         set_blas_threads_max();
-        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+        assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
 
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
@@ -539,7 +538,7 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
-#pragma omp parallel for schedule(static) collapse(2) num_threads(hwthreads) proc_bind(spread) //firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
+#pragma omp parallel for schedule(static) collapse(2) num_threads(cores) proc_bind(spread) //firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
         for(size_t k = 0u; k < outer; ++k){
             for(size_t j = 0u; j < inner; ++j){
                 auto aa = a+k*wao + j*wai;
@@ -548,7 +547,7 @@ inline void ttm(
                 set_blas_threads(1);
                 
                 assert(get_blas_threads()==1);
-                assert(get_omp_threads ()==hwthreads);
+                assert(get_omp_threads ()==cores);
 
                 if(is_cm) gemm_col(aa, b, cc);
                 else      gemm_row(aa, b, cc);
@@ -574,7 +573,7 @@ inline void ttm(
     auto is_cm = pib[0] == 1;
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
-        //assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+        //assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
 
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
@@ -610,14 +609,14 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
-#pragma omp parallel for schedule(static) collapse(2) num_threads(hwthreads) proc_bind(spread) // firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
+#pragma omp parallel for schedule(static) collapse(2) num_threads(cores) proc_bind(spread) // firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
         for(size_t k = 0u; k < outer; ++k){
             for(size_t j = 0u; j < inner; ++j){
                 auto aa = a+k*wao + j*wai;
                 auto cc = c+k*wco + j*wci;
 
                 set_blas_threads_max();
-                assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+                assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
 
                 if(is_cm) gemm_col(aa, b, cc);
                 else      gemm_row(aa, b, cc);
@@ -639,7 +638,7 @@ inline void ttm(
     auto is_cm = pib[0] == 1;
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
-        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+        assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
 
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
@@ -676,8 +675,8 @@ inline void ttm(
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
         
         
-        const auto ompthreads = unsigned (double(hwthreads)*ratio);
-        const auto blasthreads = unsigned (double(hwthreads)*(1.0-ratio));        
+        const auto ompthreads = unsigned (double(cores)*ratio);
+        const auto blasthreads = unsigned (double(cores)*(1.0-ratio));        
 
 #pragma omp parallel for schedule(static) collapse(2) num_threads(ompthreads) proc_bind(spread) //firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
         for(size_t k = 0u; k < outer; ++k){
@@ -686,7 +685,7 @@ inline void ttm(
                 auto cc = c+k*wco + j*wci;
 
                 set_blas_threads(blasthreads);
-                assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+                assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
 
                 if(is_cm) gemm_col(aa, b, cc);
                 else      gemm_row(aa, b, cc);
@@ -746,7 +745,7 @@ inline void ttm(
             )
 {
     set_blas_threads_max();
-    assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+    assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
     
 
     auto is_cm = pib[0] == 1;
@@ -787,7 +786,7 @@ inline void ttm(
 
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
-        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+        assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -842,7 +841,7 @@ inline void ttm(
 
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
-        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+        assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -873,14 +872,14 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
         
-#pragma omp parallel for schedule(static) num_threads(hwthreads) proc_bind(spread)
+#pragma omp parallel for schedule(static) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
 
             set_blas_threads_min();
             assert(get_blas_threads()==1);
-            assert(get_omp_threads()==hwthreads);
+            assert(get_omp_threads()==cores);
             
             if(is_cm) gemm_col(aa, b, cc);
             else      gemm_row(aa, b, cc);
@@ -905,7 +904,7 @@ inline void ttm(
 
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
-        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+        assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -935,13 +934,13 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
 
-#pragma omp parallel for schedule(dynamic) num_threads(hwthreads) proc_bind(spread) //firstprivate(num, waq,wcq, a,b,c, gemm_col, gemm_row, is_cm)
+#pragma omp parallel for schedule(dynamic) num_threads(cores) proc_bind(spread) //firstprivate(num, waq,wcq, a,b,c, gemm_col, gemm_row, is_cm)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
 
             set_blas_threads_max();
-            assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+            assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
             
             if(is_cm) gemm_col(aa, b, cc);
             else      gemm_row(aa, b, cc);
@@ -963,7 +962,7 @@ inline void ttm(
 
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
-        assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+        assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -993,8 +992,8 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
         
-        const auto ompthreads = unsigned (double(hwthreads)*ratio);
-        const auto blasthreads = unsigned (double(hwthreads)*(1.0-ratio));
+        const auto ompthreads = unsigned (double(cores)*ratio);
+        const auto blasthreads = unsigned (double(cores)*(1.0-ratio));
 
 #pragma omp parallel for schedule(static) num_threads(ompthreads) proc_bind(spread)
         for(size_t k = 0u; k < num; ++k){
@@ -1002,7 +1001,7 @@ inline void ttm(
             auto cc = c+k*wcq;
 
             set_blas_threads(blasthreads);
-            assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+            assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
 
             if(is_cm) gemm_col(aa, b, cc);
             else      gemm_row(aa, b, cc);
@@ -1024,7 +1023,7 @@ inline void ttm(
     auto is_cm = pib[0] == 1;
 
     set_blas_threads_max();
-    assert(get_blas_threads() > 1 || get_blas_threads() <= hwthreads);
+    assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
     
     if(!is_case<8>(p,q,pia)){
         if(is_cm)
@@ -1142,7 +1141,7 @@ inline void ttm(
     // outer = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
     auto const outer = product(na, pia, qh+1,p+1);
         
-    if( outer >= hwthreads){
+    if( outer >= cores){
         ttm(parallel_policy::omp_forloop, slicing_policy::subtensor, fusion_policy::outer,
             q, p,
             a, na, wa, pia,
@@ -1150,7 +1149,7 @@ inline void ttm(
             c, nc, wc );
     }
     else {
-      if(inner*outer >= hwthreads) {
+      if(inner*outer >= cores) {
           ttm(parallel_policy::omp_forloop, slicing_policy::slice, fusion_policy::all,
               q, p,
               a, na, wa, pia,

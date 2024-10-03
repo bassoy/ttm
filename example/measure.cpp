@@ -80,8 +80,8 @@ inline void measure(unsigned q,
                     fusion_policy fp)
 {   
 
-    auto cache = std::vector<char>(1024ul*1024ul*128ul);
-    const auto iters = 50u;
+    auto cache = std::vector<char>(1024ul*1024ul*32ul);
+    const auto iters = 10u;
     
     auto time = double(0);
     for(auto i = 0u; i < iters; ++i){
@@ -108,7 +108,8 @@ inline void measure(unsigned q,
     std::cout << "Memory: " << gbyte << " [GB]" << std::endl;
     std::cout << "Time : " << avg_time_s << " [s]" << std::endl;
     std::cout << "Gflops : " <<  gflops << " [gflops]" << std::endl;
-    std::cout << "Performance : " <<  gflops/avg_time_s << " [gflops/s]" << std::endl;   
+    std::cout << "Performance : " <<  gflops/avg_time_s << " [gflops/s]" << std::endl;
+    std::cout << "Performance : " <<  gflops/avg_time_s/tlib::detail::cores << " [gflops/s/core]" << std::endl;
 }
 
 
