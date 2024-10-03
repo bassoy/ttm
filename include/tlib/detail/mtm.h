@@ -47,15 +47,6 @@
 
 
 namespace tlib::detail {
-/*
-#ifdef USE_BLIS
-static rntm_t& get_blis_rntm()
-{
-    static rntm_t rntm = BLIS_RNTM_INITIALIZER;
-    return rntm;
-}
-#endif
-*/
 
 struct cblas_layout {};
 
@@ -75,27 +66,14 @@ struct cblas_col : cblas_layout {
 };
 
 struct cblas_trans { 
-#ifdef USE_BLIS
-    static trans_t value; 
-#else
     static CBLAS_TRANSPOSE value; 
-#endif
 };
 
 struct cblas_tr   : public cblas_trans { 
-#ifdef USE_BLIS
-    static inline constexpr trans_t value = BLIS_TRANSPOSE; 
-#else
     static inline constexpr CBLAS_TRANSPOSE value = CblasTrans; 
-#endif
 };
 struct cblas_notr : public cblas_trans { 
-#ifdef USE_BLIS
-    static inline constexpr trans_t value = BLIS_NO_TRANSPOSE; 
-#else
     static inline constexpr CBLAS_TRANSPOSE value = CblasNoTrans; 
-#endif
-
 };
 
 
@@ -105,70 +83,19 @@ template<class layout_t, class transA_t, class transB_t>
 class gemm_blas
 {
 public:   
-#ifdef USE_BLIS
     template<class value_t>
     static inline void run(const value_t* A, const value_t*B, value_t * C,
-                           dim_t const m,      dim_t const n,      dim_t const k, 
-                           inc_t const lda,    inc_t const ldb,    inc_t const ldc)
+                           std::size_t const m,      std::size_t const n,      std::size_t const k, 
+                           std::size_t const lda,    std::size_t const ldb,    std::size_t const ldc)
     {
         auto alpha = value_t(1.0);
         auto beta  = value_t(0.0);
-        
-        //auto& rntm = get_blis_rntm();
-
-        inc_t csa = lda, rsa = 1;
-        inc_t csb = ldb, rsb = 1;
-        inc_t csc = ldc, rsc = 1;
-        if (layout==CblasRowMajor){
-            csa = 1, rsa = lda; 
-            csb = 1, rsb = ldb; 
-            csc = 1, rsc = ldc; 
-        }
-
-        if constexpr (std::is_same_v<value_t,float>)
-          bli_sgemm(transA, transB, m,n,k, &alpha, (value_t*)A,rsa,csa, (value_t*)B,rsb,csb, &beta, C,rsc,csc);
-            //bli_sgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
-        else
-          bli_dgemm(transA, transB, m,n,k, &alpha, (value_t*)A,rsa,csa, (value_t*)B,rsb,csb, &beta, C,rsc,csc);
-            //bli_dgemm_ex(transA, transB, m,n,k, &alpha, A,rsa,csa, B,rsb,csb, &beta, C,rsc,csc,NULL,&rntm);
-    }
-#elif USE_MKL
-    template<class value_t>
-    static inline void run(const value_t* A, const value_t*B, value_t * C,
-                           MKL_INT const m,      MKL_INT const n,      MKL_INT const k, 
-                           MKL_INT const lda,    MKL_INT const ldb,    MKL_INT const ldc)
-    {
-        auto alpha = value_t(1.0);
-        auto beta  = value_t(0.0);
-        
-        // std::cout << "layout=" << layout << ", transA=" << transA << ", transB=" << transB;
-        // std::cout << ", m=" << m << ", n=" << n << ", k=" << k << ", lda=" << lda << ", ldb=" << ldb << ", ldc=" << ldc << std::endl; 
 
         if constexpr (std::is_same_v<value_t,float>)
             cblas_sgemm(layout, transA, transB, m,n,k, alpha, A,lda, B,ldb, beta, C, ldc);
         else
             cblas_dgemm(layout, transA, transB, m,n,k, alpha, A,lda, B,ldb, beta, C, ldc);            
     }
-#else
-    template<class value_t>
-    static inline void run(const value_t* A, const value_t*B, value_t * C,
-                           blasint const m,      blasint const n,      blasint const k, 
-                           blasint const lda,    blasint const ldb,    blasint const ldc)
-    {
-        auto alpha = value_t(1.0);
-        auto beta  = value_t(0.0);
-        
-        // std::cout << "layout=" << layout << ", transA=" << transA << ", transB=" << transB;
-        // std::cout << ", m=" << m << ", n=" << n << ", k=" << k << ", lda=" << lda << ", ldb=" << ldb << ", ldc=" << ldc << std::endl; 
-
-        if constexpr (std::is_same_v<value_t,float>)
-            cblas_sgemm(layout, transA, transB, m,n,k, alpha, A,lda, B,ldb, beta, C, ldc);
-        else
-            cblas_dgemm(layout, transA, transB, m,n,k, alpha, A,lda, B,ldb, beta, C, ldc);            
-    }
-#endif
-      
-
 private:
     static constexpr inline auto layout = layout_t::value;
     static constexpr inline auto transA = transA_t::value;
@@ -194,35 +121,6 @@ private:
     static constexpr inline auto layout = layout_t::value;
 
 public:
-
-#ifdef USE_BLIS
-   template<class value_t>
-    static inline void run(const value_t *A, const value_t *x, value_t* y, std::size_t m, std::size_t n, std::size_t lda)
-    {
-        auto alpha = value_t(1.0);
-        auto beta  = value_t(0.0);
-        
-        //auto& rntm = get_blis_rntm();
-        
-        auto noTrA  = cblas_notr::value;
-        auto noConj = BLIS_NO_CONJUGATE;
-        
-        auto incx  = 1;
-        auto incy  = 1;        
-      
-        std::size_t csa = 0, rsa = 0;
-        if (layout==CblasRowMajor){ csa = 1, rsa = lda;}
-        else                      { csa = lda, rsa = 1;}
-
-        if constexpr (std::is_same_v<value_t,float>)
-            bli_sgemv(noTrA,noConj, m,n, &alpha, (value_t*)A,rsa,csa, (value_t*)x,incx, &beta, y,incy);
-            //bli_sgemv_ex(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy,NULL,&rntm);
-            
-        else
-            bli_dgemv(noTrA,noConj, m,n, &alpha, (value_t*)A,rsa,csa, (value_t*)x,incx, &beta, y,incy);
-          //bli_dgemv_ex(noTrA,noConj, m,n, &alpha, A,rsa,csa, x,incx, &beta, y,incy,NULL,&rntm);
-    }
-#else
     template<class value_t>
     static inline void run(const value_t *A, const value_t *x, value_t* y, std::size_t m, std::size_t n, std::size_t lda)
     {
@@ -237,35 +135,35 @@ public:
         else
             cblas_dgemv(layout, noTrA, m,n, alpha, A,lda, x,incx, beta, y,incy);
     }
-#endif
 };
 
 using gemv_row = gemv_blas <cblas_row>;
 using gemv_col = gemv_blas <cblas_col>;
 
+
+// B is a row-major matrix
 template<class value_t>
-inline void mtm_rm(
-			unsigned const q, unsigned const p,
-            const value_t *a, std::size_t const*const na, std::size_t const*const pia,
-            const value_t *b, std::size_t const*const nb, // is a row-major dense matrix
-                  value_t *c, std::size_t const*const nc )
+inline void mtm_rm(unsigned const q, unsigned const p,
+                   const value_t *a, std::size_t const*const na, std::size_t const*const pia,
+                   const value_t *b, std::size_t const*const nb, 
+                   value_t *c,       std::size_t const*const nc )
 {
 
 	
-	assert(q>0);
-	assert(p>0);	
+    assert(q>0);
+    assert(p>0);	
     assert(!is_case<8>(p,q,pia));
-	
-	auto m  = na[0];
-	auto n  = na[1];
-	auto nq = na[q-1];
-	auto u  = nb[0];
 
-	assert(nc[q-1] == u);
-	assert(nb[1]  == nq);
-	
-	assert(q==0 || std::equal(na,     na+q-1, nc    ));
-	assert(q==p || std::equal(na+q+1, na+p,   nc+q+1));
+    auto m  = na[0];
+    auto n  = na[1];
+    auto nq = na[q-1];
+    auto u  = nb[0];
+
+    assert(nc[q-1] == u);
+    assert(nb[1]  == nq);
+
+    assert(q==0 || std::equal(na,     na+q-1, nc    ));
+    assert(q==p || std::equal(na+q+1, na+p,   nc+q+1));
 
     auto nn = std::accumulate( na, na+p, 1ull, std::multiplies<>() ) / nq;
  
@@ -284,30 +182,29 @@ inline void mtm_rm(
 }  
 
 
-
+// B is a column-major matrix
 template<class value_t>
-inline void mtm_cm(
-			unsigned const q, unsigned const p,
-            const value_t *a, std::size_t const*const na, std::size_t const*const pia,
-            const value_t *b, std::size_t const*const nb, // is a column-major dense matrix
-                  value_t *c, std::size_t const*const nc )
+inline void mtm_cm(unsigned const q, unsigned const p,
+                   const value_t *a, std::size_t const*const na, std::size_t const*const pia,
+                   const value_t *b, std::size_t const*const nb, 
+                   value_t *c,       std::size_t const*const nc )
 {
 
 	
-	assert(q>0);
-	assert(p>0);	
+    assert(q>0);
+    assert(p>0);	
     assert(!is_case<8>(p,q,pia));
-	
-	auto m  = na[0];
-	auto n  = na[1];
-	auto nq = na[q-1];
-	auto u  = nb[0];
 
-	assert(nc[q-1] == u);
-	assert(nb[1]  == nq);
-	
-	assert(q==0 || std::equal(na,     na+q-1, nc    ));
-	assert(q==p || std::equal(na+q+1, na+p,   nc+q+1));
+    auto m  = na[0];
+    auto n  = na[1];
+    auto nq = na[q-1];
+    auto u  = nb[0];
+
+    assert(nc[q-1] == u);
+    assert(nb[1]  == nq);
+
+    assert(q==0 || std::equal(na,     na+q-1, nc    ));
+    assert(q==p || std::equal(na+q+1, na+p,   nc+q+1));
 
     auto nn = std::accumulate( na, na+p, 1ull, std::multiplies<>() ) / nq;
  
@@ -324,8 +221,6 @@ inline void mtm_cm(
     else if(is_case<7>(p,q,pia)) gemm_col_tr2::run (a,b,c, nn,u,nq,   nn, u,nn);  // q=pi(p) | A(nq,nn),C(u,nn)   , B(u,nq) = CM | C = A xq B => C = A *(cm) B'
 	
 }  
-
-
 
 
 } // namespace tlib::detail
