@@ -157,6 +157,15 @@ inline unsigned get_omp_threads()
 #endif
 }
 
+inline void set_omp_nested()
+{
+#if defined _OPENMP 
+#if defined USE_OPENBLAS || defined USE_BLIS
+  omp_set_nested(true);
+#endif
+#endif
+}
+
 
 /* @brief Computes number of elements between modes start and finish
  *
@@ -434,7 +443,8 @@ inline void ttm(
         const value_t *b, size_t const*const nb, size_t const*const pib,
               value_t *c, size_t const*const nc, size_t const*const wc
         )
-{ 
+{
+    set_omp_nested(); 
     auto is_cm = pib[0] == 1;
 
     if(!is_case<8>(p,q,pia)){  
@@ -496,7 +506,7 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
-
+    set_omp_nested();
     auto is_cm = pib[0] == 1;
 
     if(!is_case<8>(p,q,pia)){    
@@ -570,6 +580,7 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
+    set_omp_nested();
     auto is_cm = pib[0] == 1;
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
@@ -635,6 +646,7 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
+    set_omp_nested();
     auto is_cm = pib[0] == 1;
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
@@ -837,6 +849,7 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
+    set_omp_nested();
     auto is_cm = pib[0] == 1;
 
     if(!is_case<8>(p,q,pia)){
@@ -900,6 +913,7 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
+    set_omp_nested();
     auto is_cm = pib[0] == 1;
 
     if(!is_case<8>(p,q,pia)){
@@ -958,6 +972,7 @@ inline void ttm(
               value_t *c, size_t const*const nc, size_t const*const wc
         )
 {
+    set_omp_nested();
     auto is_cm = pib[0] == 1;
 
     if(!is_case<8>(p,q,pia)){
