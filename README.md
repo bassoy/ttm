@@ -3,7 +3,7 @@ High-Performance Tensor-Matrix Multiplication Library - TLIB(TTM)
 [![Language](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://github.com/bassoy/ttm/blob/master/LICENSE)
 [![Wiki](https://img.shields.io/badge/ttm-wiki-blue.svg)](https://github.com/bassoy/ttm/wiki)
-[![Gitter](https://img.shields.io/badge/ttm-chat%20on%20gitter-4eb899.svg)](https://gitter.im/bassoy)
+[![Discussions](https://img.shields.io/badge/ttm-discussions-blue.svg)](https://github.com/bassoy/ttm/discussions)
 [![Build Status](https://github.com/bassoy/ttm/actions/workflows/test.yml/badge.svg)](https://github.com/bassoy/ttm/actions)
 
 ## Summary
@@ -11,7 +11,7 @@ High-Performance Tensor-Matrix Multiplication Library - TLIB(TTM)
 It provides free C++ functions for parallel computing the **mode-`q` tensor-times-matrix product** of the general form
 
 $$
-\underline{\mathbf{C}} = \underline{\mathbf{A}} \bullet_q \mathbf{B} \quad :\Leftrightarrow \quad
+\underline{\mathbf{C}} = \underline{\mathbf{A}} \times_q \mathbf{B} \quad :\Leftrightarrow \quad
 \underline{\mathbf{C}} (i_1, \dots, i_{q-1}, j, i_{q+1}, \dots, i_p) = \sum_{i_q=1}^{n_q} \underline{\mathbf{A}}({i_1, \dots, i_q,  \dots, i_p}) \cdot \mathbf{B}({j,i_q}).
 $$
 
@@ -37,8 +37,8 @@ Please have a look at the [wiki](https://github.com/bassoy/ttm/wiki) page for mo
 * For large tensors reaches peak matrix-times-matrix performance
 
 ### Requirements
-* Requires the tensor elements to be contiguously stored in memory.
-* Element types must be either `float` or `double`.
+* Requires the tensor elements to be contiguously stored in memory
+* Element types must be either `float` or `double`
 
 ## Python Example
 ```python
