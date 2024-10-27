@@ -134,5 +134,5 @@ template<class value_t>
 inline auto operator*(tlib::tensor_view<value_t> const& a,  tlib::tensor<value_t> const& b)
 {
     return ttm(a.contraction_mode(), a.get_tensor(),  b,
-               tlib::parallel_policy::depends, tlib::slicing_policy::depends, tlib::fusion_policy::depends) ;
+               tlib::parallel_policy::combined, tlib::slicing_policy::combined, tlib::fusion_policy::all) ;
 }

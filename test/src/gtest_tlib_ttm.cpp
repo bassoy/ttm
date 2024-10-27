@@ -366,7 +366,7 @@ TEST(TensorTimesMatrix, OmpForLoopSubtensorOuterFusion)
     using size_type        = std::size_t;
     using execution_policy = tlib::parallel_policy::omp_forloop_t;
     using slicing_policy   = tlib::slicing_policy::subtensor_t;
-    using fusion_policy    = tlib::fusion_policy::outer_t;
+    using fusion_policy    = tlib::fusion_policy::all_t;
 
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,2u>(2u,3);
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,3u>(2u,3);
@@ -380,7 +380,7 @@ TEST(TensorTimesMatrix, OmpForLoopThreadedGemmSubtensorOuterFusion)
     using size_type        = std::size_t;
     using execution_policy = tlib::parallel_policy::omp_forloop_and_threaded_gemm_t;
     using slicing_policy   = tlib::slicing_policy::subtensor_t;
-    using fusion_policy    = tlib::fusion_policy::outer_t;
+    using fusion_policy    = tlib::fusion_policy::all_t;
 
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,2u>(2u,3);
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,3u>(2u,3);
@@ -397,7 +397,7 @@ TEST(TensorTimesMatrix, BatchedGemmSubtensorOuterFusion)
     using size_type        = std::size_t;
     using execution_policy = tlib::parallel_policy::batched_gemm_t;
     using slicing_policy   = tlib::slicing_policy::subtensor_t;
-    using fusion_policy    = tlib::fusion_policy::outer_t;
+    using fusion_policy    = tlib::fusion_policy::all_t;
 
 
     check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,2u>(2u,3);

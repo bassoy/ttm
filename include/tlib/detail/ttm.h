@@ -787,7 +787,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
+        parallel_policy::threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::all_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -842,7 +842,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
+        parallel_policy::omp_forloop_t, slicing_policy::subtensor_t, fusion_policy::all_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -906,7 +906,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_and_threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
+        parallel_policy::omp_forloop_and_threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::all_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -965,7 +965,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_and_threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
+        parallel_policy::omp_forloop_and_threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::all_t,
         unsigned const q, unsigned const p, double ratio,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -1028,7 +1028,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::batched_gemm_t, slicing_policy::subtensor_t, fusion_policy::outer_t,
+        parallel_policy::batched_gemm_t, slicing_policy::subtensor_t, fusion_policy::all_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -1115,7 +1115,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::depends_t, slicing_policy::depends_t, fusion_policy::depends_t,
+        parallel_policy::combined_t, slicing_policy::combined_t, fusion_policy::all_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -1157,7 +1157,7 @@ inline void ttm(
     auto const outer = product(na, pia, qh+1,p+1);
         
     if( outer >= cores){
-        ttm(parallel_policy::omp_forloop, slicing_policy::subtensor, fusion_policy::outer,
+        ttm(parallel_policy::omp_forloop, slicing_policy::subtensor, fusion_policy::all,
             q, p,
             a, na, wa, pia,
             b, nb,     pib,

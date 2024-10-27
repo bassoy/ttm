@@ -67,16 +67,11 @@ ttm(std::size_t const contraction_mode,
   auto* cptr        = static_cast<T*>(cinfo.ptr);    // extract data an shape of input array  
   // auto nnc          = std::size_t(cinfo.size);
 
- 
-#if defined(USE_OPENBLAS) || defined(USE_MKL)
-  tlib::ttm<T>(tlib::parallel_policy::omp_forloop_t{}, tlib::slicing_policy::subtensor_t{}, tlib::fusion_policy::outer_t{}, 
-                               q, p, 
-                               aptr, na.data(), wa.data(), pia.data(),  
-                               bptr, nb.data(),            pib.data(), 
-                               cptr, nc.data(), wc.data());
-#else 
-  
-#endif
+  tlib::ttm<T>(tlib::parallel_policy::combined, tlib::slicing_policy::combined, tlib::fusion_policy::all, 
+                q, p, 
+                aptr, na.data(), wa.data(), pia.data(),  
+                bptr, nb.data(),            pib.data(), 
+                cptr, nc.data(), wc.data());
 
   return c;  
 }

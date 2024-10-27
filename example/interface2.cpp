@@ -1,15 +1,3 @@
-/*
-TLIB_DIR=..
-TLIB_INC="-I${TLIB_DIR}/include"
-
-INCS="${TLIB_INC} ${MKL_BLAS_INC}"
-LIBS="${MKL_BLAS_LIB}"
-FLAGS="${MKL_BLAS_FLAGS} -DUSE_MKLBLAS"
-
-
-g++ ${INCS} -std=c++17 -Ofast -fopenmp interface1.cpp ${LIBS} ${FLAGS} -o interface1 && ./interface1
-*/
-
 #include <tlib/ttm.h>
 
 #include <vector>
@@ -67,10 +55,10 @@ int main()
 
 
   // correct shape, layout and strides of the output tensors C1,C2 are automatically computed and returned by the functions.  
-    auto C1 = tlib::ttm(q, A,B, tlib::parallel_policy::threaded_gemm_t{} , tlib::slicing_policy::slice_t{},     tlib::fusion_policy::none_t{} );
-    auto C2 = tlib::ttm(q, A,B, tlib::parallel_policy::omp_forloop_t{}   , tlib::slicing_policy::slice_t{},     tlib::fusion_policy::all_t{} );
-    auto C3 = tlib::ttm(q, A,B, tlib::parallel_policy::omp_forloop_t{}   , tlib::slicing_policy::subtensor_t{}, tlib::fusion_policy::outer_t{} );
-    auto C4 = tlib::ttm(q, A,B, tlib::parallel_policy::batched_gemm_t{}  , tlib::slicing_policy::subtensor_t{}, tlib::fusion_policy::outer_t{} );
+    auto C1 = tlib::ttm(q, A,B, tlib::parallel_policy::threaded_gemm , tlib::slicing_policy::slice,     tlib::fusion_policy::none );
+    auto C2 = tlib::ttm(q, A,B, tlib::parallel_policy::omp_forloop   , tlib::slicing_policy::slice,     tlib::fusion_policy::all );
+    auto C3 = tlib::ttm(q, A,B, tlib::parallel_policy::omp_forloop   , tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
+    auto C4 = tlib::ttm(q, A,B, tlib::parallel_policy::batched_gemm  , tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
 
 
     std::cout << "C1 = " << C1 << std::endl;

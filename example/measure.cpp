@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
     
     if(method == 2 || method == 7){
       std::cout << "Algorithm: <par-loop | slice-qd, all>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::omp_forloop,   tlib::slicing_policy::subtensor, tlib::fusion_policy::outer);
+      measure(q, A, B, C, tlib::parallel_policy::omp_forloop,   tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
       std::cout << "---------" << std::endl << std::endl;
     }
     
@@ -203,7 +203,7 @@ int main(int argc, char* argv[])
     
     if(method == 6 || method == 7){
       std::cout << "Algorithm: <par-gemm | slice-qd, all>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::subtensor, tlib::fusion_policy::outer );
+      measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
       std::cout << "---------" << std::endl << std::endl;  
     } 
     

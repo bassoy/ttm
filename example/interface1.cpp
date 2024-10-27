@@ -1,25 +1,3 @@
-/*
-# include MLK for fast execution
-
-MKL_ROOT_DIR="/opt/intel/oneapi"
-MKL_BLAS_DIR="${MKL_ROOT_DIR}/mkl/latest"
-MKL_COMP_DIR="${MKL_ROOT_DIR}/compiler/2023.2.0/linux/compiler"
-MKL_BLAS_INC="-I${MKL_BLAS_DIR}/include"
-MKL_BLAS_LIB="-Wl,--start-group ${MKL_BLAS_DIR}/lib/libmkl_intel_ilp64.a ${MKL_BLAS_DIR}/lib/libmkl_intel_thread.a ${MKL_BLAS_DIR}/lib/libmkl_core.a ${MKL_COMP_DIR}/lib/intel64_lin/libiomp5.a -Wl,--end-group -lpthread -lm -ldl -m64"
-MKL_BLAS_FLAGS="-DMKL_ILP64 -m64"
-
-
-TLIB_DIR=..
-TLIB_INC="-I${TLIB_DIR}/include"
-
-INCS="${TLIB_INC} ${MKL_BLAS_INC}"
-LIBS="${MKL_BLAS_LIB}"
-FLAGS="${MKL_BLAS_FLAGS} -DUSE_MKLBLAS"
-
-
-g++ ${INCS} -std=c++17 -Ofast -fopenmp interface1.cpp ${LIBS} ${FLAGS} -o interface1 && ./interface1
-*/
-
 #include <tlib/ttm.h>
 
 #include <vector>
