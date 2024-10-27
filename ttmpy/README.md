@@ -8,7 +8,7 @@ cd ttm
 
 Install OpenBLAS and MLK
 ```bash
-sudo apt install libopenblas-dev libopenblas64-pthread-dev libomp-dev python3-pip python3-virtualenv
+sudo apt install libmkl-dev intel-mkl libopenblas-dev libopenblas64-pthread-dev libomp-dev python3-pip python3-virtualenv
 ```
 
 Navigate to the python wrapper folder

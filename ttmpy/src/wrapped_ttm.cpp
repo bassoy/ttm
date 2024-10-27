@@ -13,6 +13,9 @@
 
 // g++ -Wall -shared -std=c++17 wrapped_ttv.cpp -o ttvpy.so $(python3 -m pybind11 --includes) -I../include -fPIC -fopenmp -DUSE_OPENBLAS -lm -lopenblas
 
+#if ! defined(USE_OPENBLAS) &&  ! defined(USE_MKL) && ! defined(USE_BLIS)
+static_assert(0,"Static assert in ttmpy/ttm: missing specification of define USE_OPENBLAS or USE_MKL or USE_BLIS");
+#endif
 
 namespace py = pybind11;
 
@@ -65,14 +68,14 @@ ttm(std::size_t const contraction_mode,
   // auto nnc          = std::size_t(cinfo.size);
 
  
-#if defined(USE_OPENBLAS) || defined(USE_MKLBLAS)
+#if defined(USE_OPENBLAS) || defined(USE_MKL)
   tlib::ttm<T>(tlib::parallel_policy::omp_forloop_t{}, tlib::slicing_policy::subtensor_t{}, tlib::fusion_policy::outer_t{}, 
                                q, p, 
                                aptr, na.data(), wa.data(), pia.data(),  
                                bptr, nb.data(),            pib.data(), 
                                cptr, nc.data(), wc.data());
 #else 
-  static_assert(0,"Static assert in ttmpy/ttm: missing specification of define USE_OPENBLAS or USE_MKL");
+  
 #endif
 
   return c;  

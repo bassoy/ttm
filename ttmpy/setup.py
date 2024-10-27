@@ -25,7 +25,7 @@ class custom_build_ext(build_ext):
 #extra_link_args=['-fopenmp']
 
 #IntelMKL
-compile_args = ['-std=c++17','-O3','-fopenmp','-fPIC','-DUSE_MKLBLAS', '-DMKL_ILP64', '-m64']
+compile_args = ['-std=c++17','-O3','-fopenmp','-fPIC','-DUSE_MKL', '-DMKL_ILP64', '-m64']
 include_dirs = ['../include','../../include','pybind11/include','/usr/include/mkl']
 libraries=['m','dl','iomp5']
 extra_link_args=['-Wl,--start-group','/usr/lib/x86_64-linux-gnu/libmkl_intel_ilp64.a','/usr/lib/x86_64-linux-gnu/libmkl_intel_thread.a','/usr/lib/x86_64-linux-gnu/libmkl_core.a','-Wl,--end-group','-fopenmp']
