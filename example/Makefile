@@ -23,31 +23,36 @@ SRC3 := interface3.cpp
 SRC4 := measure.cpp
 
 # Object files
-OBJ1 := $(SRC1:.cpp=.o)
-OBJ2 := $(SRC2:.cpp=.o)
-OBJ3 := $(SRC3:.cpp=.o)
-OBJ4 := $(SRC4:.cpp=.o)
+OBJ1 := build/$(SRC1:.cpp=.o)
+OBJ2 := build/$(SRC2:.cpp=.o)
+OBJ3 := build/$(SRC3:.cpp=.o)
+OBJ4 := build/$(SRC4:.cpp=.o)
+
+EXE1   = bin/$(basename $(SRC1))
+EXE2   = bin/$(basename $(SRC2))
+EXE3   = bin/$(basename $(SRC3))
+EXE4   = bin/$(basename $(SRC4))
 
 # Targets
-all: interface1 interface2 interface3 measure
+all: $(EXE1) $(EXE2) $(EXE3) $(EXE4)
 
-interface1: $(OBJ1)
+$(EXE1): $(OBJ1)
 	$(CXX) $(CXX_FLAGS) -o $@ $^ $(LIBS)
 
-interface2: $(OBJ2)
+$(EXE2): $(OBJ2)
 	$(CXX) $(CXX_FLAGS) -o $@ $^ $(LIBS)
 
-interface3: $(OBJ3)
+$(EXE3): $(OBJ3)
 	$(CXX) $(CXX_FLAGS) -o $@ $^ $(LIBS) 
 
-measure: $(OBJ4)
+$(EXE4): $(OBJ4)
 	$(CXX) $(CXX_FLAGS) -o $@ $^ $(LIBS) 
 
 # Generic rule to build object files
-%.o: %.cpp
+build/%.o: %.cpp
 	$(CXX) $(CXX_FLAGS) $(INCS) -c $< -o $@
 
 # Clean rule
 clean:
-	rm -f interface1 interface2 interface3 measure $(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) 
+	rm -f $(EXE1) $(EXE2) $(EXE3) $(EXE4) $(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) 
 

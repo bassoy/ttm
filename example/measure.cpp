@@ -172,38 +172,37 @@ int main(int argc, char* argv[])
     
     if(method == 1 || method == 7){
       std::cout << "Algorithm: <par-loop | slice-2d, all>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::omp_forloop,   tlib::slicing_policy::slice,     tlib::fusion_policy::all  );
+      measure(q, A, B, C, tlib::parallel_policy::parallel_loop,   tlib::slicing_policy::slice,     tlib::fusion_policy::all  );
       std::cout << "---------" << std::endl << std::endl;
     }
     
     if(method == 2 || method == 7){
-      std::cout << "Algorithm: <par-loop | slice-qd, all>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::omp_forloop,   tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
+      std::cout << "Algorithm: <par-loop | subtensor, all>" << std::endl;
+      measure(q, A, B, C, tlib::parallel_policy::parallel_loop,   tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
       std::cout << "---------" << std::endl << std::endl;
     }
     
     if(method == 3 || method == 7){
       std::cout << "Algorithm: <par-gemm | slice-2d, none>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::slice,     tlib::fusion_policy::none );
+      measure(q, A, B, C, tlib::parallel_policy::parallel_blas, tlib::slicing_policy::slice,     tlib::fusion_policy::none );
       std::cout << "---------" << std::endl << std::endl; 
     }
     
     if(method == 4 || method == 7){
       std::cout << "Algorithm: <par-gemm | slice-2d, all>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::slice,     tlib::fusion_policy::all );
+      measure(q, A, B, C, tlib::parallel_policy::parallel_blas, tlib::slicing_policy::slice,     tlib::fusion_policy::all );
       std::cout << "---------" << std::endl << std::endl; 
     }    
 
-
     if(method == 5 || method == 7){
-      std::cout << "Algorithm: <par-gemm | slice-qd, none>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::subtensor, tlib::fusion_policy::none );
+      std::cout << "Algorithm: <par-gemm | subtensor, none>" << std::endl;
+      measure(q, A, B, C, tlib::parallel_policy::parallel_blas, tlib::slicing_policy::subtensor, tlib::fusion_policy::none );
       std::cout << "---------" << std::endl << std::endl;  
     } 
     
     if(method == 6 || method == 7){
       std::cout << "Algorithm: <par-gemm | slice-qd, all>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::threaded_gemm, tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
+      measure(q, A, B, C, tlib::parallel_policy::parallel_blas, tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
       std::cout << "---------" << std::endl << std::endl;  
     } 
     

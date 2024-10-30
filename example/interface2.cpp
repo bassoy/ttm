@@ -55,9 +55,9 @@ int main()
 
 
   // correct shape, layout and strides of the output tensors C1,C2 are automatically computed and returned by the functions.  
-    auto C1 = tlib::ttm(q, A,B, tlib::parallel_policy::threaded_gemm , tlib::slicing_policy::slice,     tlib::fusion_policy::none );
-    auto C2 = tlib::ttm(q, A,B, tlib::parallel_policy::omp_forloop   , tlib::slicing_policy::slice,     tlib::fusion_policy::all );
-    auto C3 = tlib::ttm(q, A,B, tlib::parallel_policy::omp_forloop   , tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
+    auto C1 = tlib::ttm(q, A,B, tlib::parallel_policy::parallel_blas , tlib::slicing_policy::slice,     tlib::fusion_policy::none );
+    auto C2 = tlib::ttm(q, A,B, tlib::parallel_policy::parallel_loop , tlib::slicing_policy::slice,     tlib::fusion_policy::all );
+    auto C3 = tlib::ttm(q, A,B, tlib::parallel_policy::parallel_loop , tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
     auto C4 = tlib::ttm(q, A,B, tlib::parallel_policy::batched_gemm  , tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
 
 

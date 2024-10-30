@@ -55,6 +55,8 @@
 #include <cstdlib>
 #include <cstdio>
 
+namespace tlib::detail{
+
 static inline unsigned get_number_cores() 
 {
 
@@ -89,7 +91,7 @@ static inline unsigned get_number_cores()
     return num_cores;
 }
 
-namespace tlib::detail{
+
 
 static const unsigned cores = get_number_cores();
 
@@ -200,7 +202,7 @@ inline auto product(size_t const*const n, size_t const*const pi, unsigned start,
  * @note gemm_t should be a general matrix-times-matrix function for matrices with row-major format
 */
 template<class value_t, class size_t, class gemm_t>
-inline void multiple_gemm_with_slices (
+inline void loops_over_gemm_with_slices (
         gemm_t && gemm,
         unsigned const r, // starts with p
 //        unsigned const q, // 1 <= q <= p
@@ -212,12 +214,12 @@ inline void multiple_gemm_with_slices (
 {    
 	if(r>1){
         if (r == qh) { // q == pia[r]
-            multiple_gemm_with_slices(std::forward<gemm_t>(gemm), r-1, qh,   a,na,wa,pia,  b,  c,nc,wc);
+            loops_over_gemm_with_slices(std::forward<gemm_t>(gemm), r-1, qh,   a,na,wa,pia,  b,  c,nc,wc);
 		}
         else{ //  r>1 && r != qh
             auto pia_r = pia[r-1]-1;
             for(unsigned i = 0; i < na[pia_r]; ++i, a+=wa[pia_r], c+=wc[pia_r]){
-                multiple_gemm_with_slices(std::forward<gemm_t>(gemm), r-1, qh,  a,na,wa,pia,  b,  c,nc,wc);
+                loops_over_gemm_with_slices(std::forward<gemm_t>(gemm), r-1, qh,  a,na,wa,pia,  b,  c,nc,wc);
             }
 		}
 	}
@@ -235,7 +237,7 @@ inline void multiple_gemm_with_slices (
  * @note pia_1[q]!=1 i.e. pia[1]!=q must hold!
 */
 template<class value_t, class size_t, class gemm_t>
-inline void multiple_gemm_with_subtensors (
+inline void loops_over_gemm_with_subtensors (
         gemm_t && gemm,
         unsigned const r, // starts with p
         unsigned const qh, // qhat one-based
@@ -246,12 +248,12 @@ inline void multiple_gemm_with_subtensors (
 {
     if(r>1){
         if (r <= qh) {
-            multiple_gemm_with_subtensors  (std::forward<gemm_t>(gemm), r-1, qh,   a,na,wa,pia,  b,  c,nc,wc);
+            loops_over_gemm_with_subtensors  (std::forward<gemm_t>(gemm), r-1, qh,   a,na,wa,pia,  b,  c,nc,wc);
         }
         else if (r > qh){
             auto pia_r = pia[r-1]-1u;
             for(size_t i = 0; i < na[pia_r]; ++i, a+=wa[pia_r], c+=wc[pia_r]){
-                multiple_gemm_with_subtensors (std::forward<gemm_t>(gemm), r-1, qh,  a,na,wa,pia,  b,  c,nc,wc);
+                loops_over_gemm_with_subtensors (std::forward<gemm_t>(gemm), r-1, qh,  a,na,wa,pia,  b,  c,nc,wc);
             }
         }
     }
@@ -321,8 +323,8 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
-        if(is_cm) multiple_gemm_with_slices(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
-        else      multiple_gemm_with_slices(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+        if(is_cm) loops_over_gemm_with_slices(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+        else      loops_over_gemm_with_slices(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
 	}
 }
 
@@ -330,7 +332,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-            parallel_policy::threaded_gemm_t, slicing_policy::slice_t, fusion_policy::none_t,
+            parallel_policy::parallel_blas_t, slicing_policy::slice_t, fusion_policy::none_t,
             unsigned const q, unsigned const p,
             const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
             const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -361,15 +363,15 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
-        if(is_cm) multiple_gemm_with_slices(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
-        else      multiple_gemm_with_slices(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+        if(is_cm) loops_over_gemm_with_slices(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+        else      loops_over_gemm_with_slices(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
     }
 }
 
 
 template<class value_t, class size_t>
 inline void ttm(
-            parallel_policy::threaded_gemm_t, slicing_policy::slice_t, fusion_policy::all_t,
+            parallel_policy::parallel_blas_t, slicing_policy::slice_t, fusion_policy::all_t,
             unsigned const q, unsigned const p,
             const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
             const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -437,7 +439,7 @@ inline void ttm(
 // only parallelize the outer dimensions
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_t, slicing_policy::slice_t, fusion_policy::outer_t,
+        parallel_policy::parallel_loop_t, slicing_policy::slice_t, fusion_policy::outer_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -480,7 +482,7 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq,m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
-#pragma omp parallel for schedule(static) num_threads(cores) proc_bind(spread)
+        #pragma omp parallel for schedule(static) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;          
@@ -488,8 +490,8 @@ inline void ttm(
             set_blas_threads_min();
             assert(get_blas_threads()==1);
 
-            if(is_cm) multiple_gemm_with_slices(gemm_col, qh, qh,  aa,na,wa,pia,   b,  cc,nc,wc);
-            else      multiple_gemm_with_slices(gemm_row, qh, qh,  aa,na,wa,pia,   b,  cc,nc,wc);
+            if(is_cm) loops_over_gemm_with_slices(gemm_col, qh, qh,  aa,na,wa,pia,   b,  cc,nc,wc);
+            else      loops_over_gemm_with_slices(gemm_row, qh, qh,  aa,na,wa,pia,   b,  cc,nc,wc);
 
         }        
     }
@@ -499,7 +501,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_t, slicing_policy::slice_t, fusion_policy::all_t,
+        parallel_policy::parallel_loop_t, slicing_policy::slice_t, fusion_policy::all_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -548,7 +550,7 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
-#pragma omp parallel for schedule(static) collapse(2) num_threads(cores) proc_bind(spread) //firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
+        #pragma omp parallel for schedule(static) collapse(2) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < outer; ++k){
             for(size_t j = 0u; j < inner; ++j){
                 auto aa = a+k*wao + j*wai;
@@ -573,7 +575,7 @@ inline void ttm(
 // only parallelize the outer dimensions
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_and_threaded_gemm_t, slicing_policy::slice_t, fusion_policy::all_t,
+        parallel_policy::parallel_loop_blas_t, slicing_policy::slice_t, fusion_policy::all_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -584,7 +586,7 @@ inline void ttm(
     auto is_cm = pib[0] == 1;
     if(!is_case<8>(p,q,pia)){
         set_blas_threads_max();
-        //assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
+        assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
 
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
@@ -620,7 +622,7 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
-#pragma omp parallel for schedule(static) collapse(2) num_threads(cores) proc_bind(spread) // firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
+        #pragma omp parallel for schedule(static) collapse(2) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < outer; ++k){
             for(size_t j = 0u; j < inner; ++j){
                 auto aa = a+k*wao + j*wai;
@@ -639,7 +641,7 @@ inline void ttm(
 // only parallelize the outer dimensions
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_and_threaded_gemm_t, slicing_policy::slice_t, fusion_policy::all_t,
+        parallel_policy::parallel_loop_blas_t, slicing_policy::slice_t, fusion_policy::all_t,
         unsigned const q, unsigned const p, double ratio,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -690,7 +692,7 @@ inline void ttm(
         const auto ompthreads = unsigned (double(cores)*ratio);
         const auto blasthreads = unsigned (double(cores)*(1.0-ratio));        
 
-#pragma omp parallel for schedule(static) collapse(2) num_threads(ompthreads) proc_bind(spread) //firstprivate(outer,inner,wai,wci,wao,wco,a,b,c, gemm_col, gemm_row, is_cm)
+        #pragma omp parallel for schedule(static) collapse(2) num_threads(ompthreads) proc_bind(spread)
         for(size_t k = 0u; k < outer; ++k){
             for(size_t j = 0u; j < inner; ++j){
                 auto aa = a+k*wao + j*wai;
@@ -739,8 +741,8 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
 
-        if(is_cm) multiple_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
-        else      multiple_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+        if(is_cm) loops_over_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+        else      loops_over_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
 
     }
 }
@@ -749,7 +751,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-            parallel_policy::threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::none_t,
+            parallel_policy::parallel_blas_t, slicing_policy::subtensor_t, fusion_policy::none_t,
             unsigned const q, unsigned const p,
             const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
             const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -778,8 +780,8 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
 
-        if(is_cm) multiple_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
-        else      multiple_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+        if(is_cm) loops_over_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+        else      loops_over_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
 
     }
 }
@@ -787,7 +789,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::all_t,
+        parallel_policy::parallel_blas_t, slicing_policy::subtensor_t, fusion_policy::all_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -842,7 +844,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_t, slicing_policy::subtensor_t, fusion_policy::all_t,
+        parallel_policy::parallel_loop_t, slicing_policy::subtensor_t, fusion_policy::all_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -885,7 +887,7 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
         
-#pragma omp parallel for schedule(static) num_threads(cores) proc_bind(spread)
+        #pragma omp parallel for schedule(static) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
@@ -906,7 +908,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_and_threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::all_t,
+        parallel_policy::parallel_loop_blas_t, slicing_policy::subtensor_t, fusion_policy::all_t,
         unsigned const q, unsigned const p,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -948,7 +950,7 @@ inline void ttm(
         auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
         auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
 
-#pragma omp parallel for schedule(dynamic) num_threads(cores) proc_bind(spread) //firstprivate(num, waq,wcq, a,b,c, gemm_col, gemm_row, is_cm)
+        #pragma omp parallel for schedule(dynamic) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
@@ -965,7 +967,7 @@ inline void ttm(
 
 template<class value_t, class size_t>
 inline void ttm(
-        parallel_policy::omp_forloop_and_threaded_gemm_t, slicing_policy::subtensor_t, fusion_policy::all_t,
+        parallel_policy::parallel_loop_blas_t, slicing_policy::subtensor_t, fusion_policy::all_t,
         unsigned const q, unsigned const p, double ratio,
         const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
         const value_t *b, size_t const*const nb, size_t const*const pib,
@@ -1010,7 +1012,7 @@ inline void ttm(
         const auto ompthreads = unsigned (double(cores)*ratio);
         const auto blasthreads = unsigned (double(cores)*(1.0-ratio));
 
-#pragma omp parallel for schedule(static) num_threads(ompthreads) proc_bind(spread)
+        #pragma omp parallel for schedule(static) num_threads(ompthreads) proc_bind(spread)
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
             auto cc = c+k*wcq;
@@ -1157,7 +1159,7 @@ inline void ttm(
     auto const outer = product(na, pia, qh+1,p+1);
         
     if( outer >= cores){
-        ttm(parallel_policy::omp_forloop, slicing_policy::subtensor, fusion_policy::all,
+        ttm(parallel_policy::parallel_loop, slicing_policy::subtensor, fusion_policy::all,
             q, p,
             a, na, wa, pia,
             b, nb,     pib,
@@ -1165,14 +1167,14 @@ inline void ttm(
     }
     else {
       if(inner*outer >= cores) {
-          ttm(parallel_policy::omp_forloop, slicing_policy::slice, fusion_policy::all,
+          ttm(parallel_policy::parallel_loop, slicing_policy::slice, fusion_policy::all,
               q, p,
               a, na, wa, pia,
               b, nb,     pib,
               c, nc, wc );        
       }
       else{
-          ttm(parallel_policy::threaded_gemm, slicing_policy::subtensor, fusion_policy::none,
+          ttm(parallel_policy::parallel_blas, slicing_policy::subtensor, fusion_policy::none,
               q, p,
               a, na, wa, pia,
               b, nb,     pib,

@@ -269,11 +269,11 @@ TEST(TensorTimesMatrix, SequentialSliceNoFusion)
 }
 
 
-TEST(TensorTimesMatrix, ThreadedGemmSliceNoLoopFusion)
+TEST(TensorTimesMatrix, ParallelGemmSliceNoFusion)
 {
     using value_type       = double;
     using size_type        = std::size_t;
-    using execution_policy = tlib::parallel_policy::threaded_gemm_t;
+    using execution_policy = tlib::parallel_policy::parallel_blas_t;
     using slicing_policy   = tlib::slicing_policy::slice_t;
     using fusion_policy    = tlib::fusion_policy::none_t;
 
@@ -283,11 +283,11 @@ TEST(TensorTimesMatrix, ThreadedGemmSliceNoLoopFusion)
 }
 
 
-TEST(TensorTimesMatrix, ThreadedGemmSubtensorNoLoopFusion)
+TEST(TensorTimesMatrix, ParallelGemmSubtensorNoFusion)
 {
     using value_type       = double;
     using size_type        = std::size_t;
-    using execution_policy = tlib::parallel_policy::threaded_gemm_t;
+    using execution_policy = tlib::parallel_policy::parallel_blas_t;
     using slicing_policy   = tlib::slicing_policy::subtensor_t;
     using fusion_policy    = tlib::fusion_policy::none_t;
 
@@ -297,12 +297,12 @@ TEST(TensorTimesMatrix, ThreadedGemmSubtensorNoLoopFusion)
 //    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,5u>(2u,3);
 }
 
-TEST(TensorTimesMatrix, OmpForLoopSliceOuterFusion)
+TEST(TensorTimesMatrix, ParallelLoopSliceOuterFusion)
 {
 
     using value_type       = double;
     using size_type        = std::size_t;
-    using execution_policy = tlib::parallel_policy::omp_forloop_t;
+    using execution_policy = tlib::parallel_policy::parallel_loop_t;
     using slicing_policy   = tlib::slicing_policy::slice_t;
     using fusion_policy    = tlib::fusion_policy::outer_t;
 
@@ -313,11 +313,11 @@ TEST(TensorTimesMatrix, OmpForLoopSliceOuterFusion)
 }
 
 
-TEST(TensorTimesMatrix, OmpForLoopSliceAllFusion)
+TEST(TensorTimesMatrix, ParallelLoopSliceAllFusion)
 {
     using value_type       = double;
     using size_type        = std::size_t;
-    using execution_policy = tlib::parallel_policy::omp_forloop_t;
+    using execution_policy = tlib::parallel_policy::parallel_loop_t;
     using slicing_policy   = tlib::slicing_policy::slice_t;
     using fusion_policy    = tlib::fusion_policy::all_t;
 
@@ -328,11 +328,11 @@ TEST(TensorTimesMatrix, OmpForLoopSliceAllFusion)
 }
 
 
-TEST(TensorTimesMatrix, OmpForLoopThreadedGemmSliceAllFusion)
+TEST(TensorTimesMatrix, ParallelLoopParallelGemmSliceAllFusion)
 {
     using value_type       = double;
     using size_type        = std::size_t;
-    using execution_policy = tlib::parallel_policy::omp_forloop_and_threaded_gemm_t;
+    using execution_policy = tlib::parallel_policy::parallel_loop_blas_t;
     using slicing_policy   = tlib::slicing_policy::slice_t;
     using fusion_policy    = tlib::fusion_policy::all_t;
 
@@ -360,11 +360,11 @@ TEST(TensorTimesMatrix, SequentialSubtensorNoFusion)
 }
 
 
-TEST(TensorTimesMatrix, OmpForLoopSubtensorOuterFusion)
+TEST(TensorTimesMatrix, ParallelLoopSubtensorOuterFusion)
 {
     using value_type       = double;
     using size_type        = std::size_t;
-    using execution_policy = tlib::parallel_policy::omp_forloop_t;
+    using execution_policy = tlib::parallel_policy::parallel_loop_t;
     using slicing_policy   = tlib::slicing_policy::subtensor_t;
     using fusion_policy    = tlib::fusion_policy::all_t;
 
@@ -374,11 +374,11 @@ TEST(TensorTimesMatrix, OmpForLoopSubtensorOuterFusion)
 //    check_tensor_times_matrix<value_type,size_type,execution_policy,slicing_policy,fusion_policy,5u>(2u,3);
 }
 
-TEST(TensorTimesMatrix, OmpForLoopThreadedGemmSubtensorOuterFusion)
+TEST(TensorTimesMatrix, ParallelLoopParallelGemmSubtensorOuterFusion)
 {
     using value_type       = double;
     using size_type        = std::size_t;
-    using execution_policy = tlib::parallel_policy::omp_forloop_and_threaded_gemm_t;
+    using execution_policy = tlib::parallel_policy::parallel_loop_blas_t;
     using slicing_policy   = tlib::slicing_policy::subtensor_t;
     using fusion_policy    = tlib::fusion_policy::all_t;
 

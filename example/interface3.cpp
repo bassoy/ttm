@@ -44,14 +44,14 @@ int main()
     std::cout << "B = [ "; std::copy(B.begin(), B.end(), iterator_t(std::cout, " ")); std::cout << " ];" << std::endl;
 
     tlib::ttm(
-        tlib::parallel_policy::threaded_gemm , tlib::slicing_policy::slice,  tlib::fusion_policy::none,
+        tlib::parallel_policy::parallel_blas , tlib::slicing_policy::slice,  tlib::fusion_policy::none,
         q, p,
         A.data(), na.data(), wa.data(), pia.data(),
         B.data(), nb.data(),            pib.data(),
         C1.data(), nc.data(), wc.data());
 
     tlib::ttm(
-        tlib::parallel_policy::omp_forloop, tlib::slicing_policy::subtensor, tlib::fusion_policy::all,
+        tlib::parallel_policy::parallel_loop, tlib::slicing_policy::subtensor, tlib::fusion_policy::all,
         q, p,
         A.data(), na.data(), wa.data(), pia.data(),
         B.data(), nb.data(),            pib.data(),
