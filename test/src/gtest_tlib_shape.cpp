@@ -24,7 +24,7 @@
 
 
 #include <tlib/detail/shape.h>
-
+using namespace tlib::ttm;
 
 class ShapeTest : public ::testing::Test {
 protected:
@@ -64,76 +64,76 @@ protected:
 
 TEST_F(ShapeTest, is_scalar)
 {
-	auto ints = std::vector<unsigned>{2,6,15};
-	
-	for(auto i : ints){
-		EXPECT_TRUE (tlib::detail::is_scalar(shapes[i].begin(), shapes[i].end()));		
-	}
+  auto ints = std::vector<unsigned>{2,6,15};
 
-	for(auto i = 0u; i < shapes.size(); ++i){
-		if(std::find(ints.begin(), ints.end(),i)==ints.end()){
-			EXPECT_FALSE(tlib::detail::is_scalar(shapes[i].begin(), shapes[i].end()));
-		}
-	}
+  for(auto i : ints){
+    EXPECT_TRUE (detail::is_scalar(shapes[i].begin(), shapes[i].end()));		
+  }
+
+  for(auto i = 0u; i < shapes.size(); ++i){
+    if(std::find(ints.begin(), ints.end(),i)==ints.end()){
+      EXPECT_FALSE(detail::is_scalar(shapes[i].begin(), shapes[i].end()));
+    }
+  }
 }
 
 
 TEST_F(ShapeTest, is_vector)
 {
-	auto ints = std::vector<unsigned>{3,7,8,9,10,17,19};
-	
-	for(auto i : ints ){
-		EXPECT_TRUE (tlib::detail::is_vector(shapes[i].begin(), shapes[i].end()));		
-	}
-	for(auto i = 0u; i < shapes.size(); ++i ){
-		if(std::find(ints.begin(), ints.end(),i)==ints.end()){
-			EXPECT_FALSE(tlib::detail::is_vector(shapes[i].begin(), shapes[i].end()));
-		}
-	}
+  auto ints = std::vector<unsigned>{3,7,8,9,10,17,19};
+
+  for(auto i : ints){
+    EXPECT_TRUE (detail::is_vector(shapes[i].begin(), shapes[i].end()));		
+  }
+  for(auto i = 0u; i < shapes.size(); ++i ){
+    if(std::find(ints.begin(), ints.end(),i)==ints.end()){
+      EXPECT_FALSE(detail::is_vector(shapes[i].begin(), shapes[i].end()));
+    }
+  }
 }
 
 
 TEST_F(ShapeTest, is_matrix)
 {
-	auto ints = std::vector<unsigned>{11,12,21};
-	
-	for(auto i : ints ){
-		EXPECT_TRUE (tlib::detail::is_matrix(shapes[i].begin(), shapes[i].end()));		
-	}
-	for(auto i = 0u; i < shapes.size(); ++i ){
-		if(std::find(ints.begin(), ints.end(),i)==ints.end()){
-			EXPECT_FALSE(tlib::detail::is_matrix(shapes[i].begin(), shapes[i].end()));
-		}
-	}
+  auto ints = std::vector<unsigned>{11,12,21};
+
+  for(auto i : ints ){
+    EXPECT_TRUE (detail::is_matrix(shapes[i].begin(), shapes[i].end()));		
+  }
+  for(auto i = 0u; i < shapes.size(); ++i ){
+    if(std::find(ints.begin(), ints.end(),i)==ints.end()){
+      EXPECT_FALSE(detail::is_matrix(shapes[i].begin(), shapes[i].end()));
+    }
+  }
 }
 
 
 TEST_F(ShapeTest, is_tensor)
 {
-	auto ints = std::vector<unsigned> {16,18,20,22};
-	
-	for(auto i : ints ){
-		EXPECT_TRUE (tlib::detail::is_tensor(shapes[i].begin(), shapes[i].end()));		
-	}
-	for(auto i = 0u; i < shapes.size(); ++i ){
-		if(std::find(ints.begin(), ints.end(),i)==ints.end()){
-			EXPECT_FALSE(tlib::detail::is_tensor(shapes[i].begin(), shapes[i].end()));
-		}
-	}
+  auto ints = std::vector<unsigned> {16,18,20,22};
+
+  for(auto i : ints ){
+    EXPECT_TRUE (detail::is_tensor(shapes[i].begin(), shapes[i].end()));		
+  }
+  for(auto i = 0u; i < shapes.size(); ++i ){
+    if(std::find(ints.begin(), ints.end(),i)==ints.end()){
+      EXPECT_FALSE(detail::is_tensor(shapes[i].begin(), shapes[i].end()));
+    }
+  }
 }
 
 TEST_F(ShapeTest, is_valid)
 {
-	auto ints = std::vector<unsigned> {0,1,4,5,13,14};
-	
-	for(auto i : ints ){
-		EXPECT_FALSE(tlib::detail::is_valid_shape(shapes[i].begin(), shapes[i].end()));		
-	}
-	for(auto i = 0u; i < shapes.size(); ++i ){
-		if(std::find(ints.begin(), ints.end(),i)==ints.end()){
-			EXPECT_TRUE(tlib::detail::is_valid_shape(shapes[i].begin(), shapes[i].end()));
-		}
-	}
+  auto ints = std::vector<unsigned> {0,1,4,5,13,14};
+
+  for(auto i : ints ){
+    EXPECT_FALSE(detail::is_valid_shape(shapes[i].begin(), shapes[i].end()));		
+  }
+  for(auto i = 0u; i < shapes.size(); ++i ){
+    if(std::find(ints.begin(), ints.end(),i)==ints.end()){
+      EXPECT_TRUE(detail::is_valid_shape(shapes[i].begin(), shapes[i].end()));
+    }
+  }
 }
 
 

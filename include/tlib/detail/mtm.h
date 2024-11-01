@@ -46,7 +46,7 @@
 
 
 
-namespace tlib::detail {
+namespace tlib::ttm::detail {
 
 struct cblas_layout {};
 
@@ -223,4 +223,4 @@ inline void mtm_cm(unsigned const q, unsigned const p,
 }  
 
 
-} // namespace tlib::detail
+} // namespace tlib::ttm::detail

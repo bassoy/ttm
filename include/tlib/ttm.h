@@ -21,7 +21,7 @@
 #include "detail/tensor.h"
 #include "detail/tags.h"
 
-namespace tlib
+namespace tlib::ttm
 {
 		
 
@@ -60,6 +60,7 @@ inline void ttm(
     value_t       *c, size_t const*const nc, size_t const*const wc
 	)
 {
+    using namespace tlib::ttm;
 
     if(p==0)        throw std::runtime_error("Error in tlib::tensor_times_matrix: input tensor order should be greater zero.");
     if(q==0 || q>p) throw std::runtime_error("Error in tlib::tensor_times_matrix: contraction mode should be greater zero or less than or equal to p.");
@@ -97,11 +98,10 @@ inline void ttm(
  *
  */
 template<class value_t, class execution_policy, class slicing_policy, class fusion_policy>
-inline auto ttm(
-        std::size_t q,
-        tensor<value_t> const& a,
-        tensor<value_t> const& b,
-        execution_policy ep, slicing_policy sp, fusion_policy fp)
+inline auto ttm(std::size_t q,
+                ttm::tensor<value_t> const& a,
+                ttm::tensor<value_t> const& b,
+                execution_policy ep, slicing_policy sp, fusion_policy fp)
 {
     auto const p = a.order();
 
@@ -131,8 +131,8 @@ inline auto ttm(
  *
  */
 template<class value_t>
-inline auto operator*(tlib::tensor_view<value_t> const& a,  tlib::tensor<value_t> const& b)
+inline auto operator*(tlib::ttm::tensor_view<value_t> const& a,  tlib::ttm::tensor<value_t> const& b)
 {
     return ttm(a.contraction_mode(), a.get_tensor(),  b,
-               tlib::parallel_policy::combined, tlib::slicing_policy::combined, tlib::fusion_policy::all) ;
+               tlib::ttm::parallel_policy::combined, tlib::ttm::slicing_policy::combined, tlib::ttm::fusion_policy::all) ;
 }

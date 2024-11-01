@@ -25,7 +25,7 @@
 #include <vector>
 
 
-namespace tlib::detail
+namespace tlib::ttm::detail
 {
 
 template<class InputIt>
@@ -93,4 +93,4 @@ inline bool is_tensor(InputIt begin, InputIt end)
 
 
 
-} // namespace tlib::detail
+} // namespace tlib::ttm::detail

@@ -26,6 +26,7 @@
 
 #include "gtest_aux.h"
 
+using namespace tlib::ttm;
 
 template<class matrix_type>
 [[nodiscard]] matrix_type mtm(matrix_type  const& a, matrix_type  const& b)
@@ -290,7 +291,7 @@ TEST(MatrixTimesVector, Ref)
 
                 auto c = mtv(a,b);
 
-                auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+                auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
                 ttm_check(a.p(),q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
             }
@@ -305,7 +306,7 @@ TEST(MatrixTimesVector, Ref)
 
                 auto c = vtm(a,b);
 
-                auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+                auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
                 ttm_check(a.p(),q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
             }
@@ -348,7 +349,7 @@ TEST(MatrixTimesMatrix, Ref)
 
             auto c = mtm(a,b);
 
-            auto qh = tlib::detail::inverse_mode(f.begin(),f.end(),q);
+            auto qh = detail::inverse_mode(f.begin(),f.end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }
@@ -391,11 +392,10 @@ TEST(MatrixTimesMatrix, Case1)
         tlib::gtest::init(b,2u);
 
 
-        tlib::detail::mtm_rm(
-                    q,p,
-                    a.data(), na.data(), pia.data(),
-                    b.data(), nb.data(),
-                    c.data(), nc.data());
+        detail::mtm_rm(q,p,
+                       a.data(), na.data(), pia.data(),
+                       b.data(), nb.data(),
+                       c.data(), nc.data());
 
         for(auto i = 0ul; i < m; ++i)
             EXPECT_FLOAT_EQ(c[i], refc(b,i,2u) );
@@ -422,11 +422,10 @@ TEST(MatrixTimesMatrix, Case1)
         tlib::gtest::init(b,2u);
 
 
-        tlib::detail::mtm_cm(
-                    q,p,
-                    a.data(), na.data(), pia.data(),
-                    b.data(), nb.data(),
-                    c.data(), nc.data());
+        detail::mtm_cm(q,p,
+                       a.data(), na.data(), pia.data(),
+                       b.data(), nb.data(),
+                       c.data(), nc.data());
 
         for(auto i = 0ul; i < m; ++i)
             EXPECT_FLOAT_EQ(c[i], refc(b,i,2u) );
@@ -461,7 +460,7 @@ TEST(MatrixTimesMatrix, Case2)
         auto n = na[1];
         auto u = m*2;
 
-        ASSERT_TRUE(tlib::detail::is_case<2>(p,q,cm.data()));
+        ASSERT_TRUE(detail::is_case<2>(p,q,cm.data()));
 
 
         auto a = matrix({m,n}, 1.0, cm);
@@ -473,13 +472,12 @@ TEST(MatrixTimesMatrix, Case2)
         
         tlib::gtest::init(a,q);
 
-        tlib::detail::mtm_rm(
-                    q,p,
-                    a.data(), na.data(), pia.data(),
-                    b.data(), nb.data(),
-                    c.data(), nc.data());
+        detail::mtm_rm(q,p,
+                       a.data(), na.data(), pia.data(),
+                       b.data(), nb.data(),
+                       c.data(), nc.data());
 
-        auto qh = tlib::detail::inverse_mode(pia.begin(),pia.end(),q);
+        auto qh = detail::inverse_mode(pia.begin(),pia.end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
     }
@@ -491,7 +489,7 @@ TEST(MatrixTimesMatrix, Case2)
         auto n = na[1];
         auto u = m*2;
 
-        ASSERT_TRUE(tlib::detail::is_case<2>(p,q,cm.data()));
+        ASSERT_TRUE(detail::is_case<2>(p,q,cm.data()));
 
 
         auto a = matrix({m,n}, 1.0, cm);
@@ -503,13 +501,12 @@ TEST(MatrixTimesMatrix, Case2)
 
         tlib::gtest::init(a,q);
 
-        tlib::detail::mtm_cm(
-                    q,p,
-                    a.data(), na.data(), pia.data(),
-                    b.data(), nb.data(),
-                    c.data(), nc.data());
+        detail::mtm_cm(q,p,
+                       a.data(), na.data(), pia.data(),
+                       b.data(), nb.data(),
+                       c.data(), nc.data());
 
-        auto qh = tlib::detail::inverse_mode(pia.begin(),pia.end(),q);
+        auto qh = detail::inverse_mode(pia.begin(),pia.end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
     }
@@ -542,7 +539,7 @@ TEST(MatrixTimesMatrix, Case3)
         auto n = na[1];
         auto u = m*2;
 
-        ASSERT_TRUE(tlib::detail::is_case<3>(p,q,cm.data()));
+        ASSERT_TRUE(detail::is_case<3>(p,q,cm.data()));
 
 
         auto a = matrix({m,n}, 1.0, cm);
@@ -554,13 +551,12 @@ TEST(MatrixTimesMatrix, Case3)
         
         tlib::gtest::init(a,q);
 
-        tlib::detail::mtm_rm(
-                    q,p,
-                    a.data(), na.data(), pia.data(),
-                    b.data(), nb.data(),
-                    c.data(), nc.data());
+        detail::mtm_rm(q,p,
+                       a.data(), na.data(), pia.data(),
+                       b.data(), nb.data(),
+                       c.data(), nc.data());
 
-        auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+        auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
     }
 
@@ -572,7 +568,7 @@ TEST(MatrixTimesMatrix, Case3)
         auto n = na[1];
         auto u = m*2;
 
-        ASSERT_TRUE(tlib::detail::is_case<3>(p,q,cm.data()));
+        ASSERT_TRUE(detail::is_case<3>(p,q,cm.data()));
 
 
         auto a = matrix({m,n}, 1.0, cm);
@@ -584,13 +580,12 @@ TEST(MatrixTimesMatrix, Case3)
 
         tlib::gtest::init(a,q);
 
-        tlib::detail::mtm_cm(
-                    q,p,
-                    a.data(), na.data(), pia.data(),
-                    b.data(), nb.data(),
-                    c.data(), nc.data());
+        detail::mtm_cm(q,p,
+                       a.data(), na.data(), pia.data(),
+                       b.data(), nb.data(),
+                       c.data(), nc.data());
 
-        auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+        auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
     }
 }
@@ -623,7 +618,7 @@ TEST(MatrixTimesMatrix, Case4)
         auto n = na[1];
         auto u = m*2;
 
-        ASSERT_TRUE(tlib::detail::is_case<4>(p,q,rm.data()));
+        ASSERT_TRUE(detail::is_case<4>(p,q,rm.data()));
 
 
         auto a = matrix({m,n}, 1.0, rm);
@@ -635,13 +630,12 @@ TEST(MatrixTimesMatrix, Case4)
 
         tlib::gtest::init(a,q);
 
-        tlib::detail::mtm_rm(
-                    q,p,
-                    a.data(), na.data(), pia.data(),
-                    b.data(), nb.data(),
-                    c.data(), nc.data());
+        detail::mtm_rm(q,p,
+                       a.data(), na.data(), pia.data(),
+                       b.data(), nb.data(),
+                       c.data(), nc.data());
 
-        auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+        auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
     }
 
@@ -653,7 +647,7 @@ TEST(MatrixTimesMatrix, Case4)
         auto n = na[1];
         auto u = m*2;
 
-        ASSERT_TRUE(tlib::detail::is_case<4>(p,q,rm.data()));
+        ASSERT_TRUE(detail::is_case<4>(p,q,rm.data()));
 
 
         auto a = matrix({m,n}, 1.0, rm);
@@ -665,13 +659,12 @@ TEST(MatrixTimesMatrix, Case4)
 
         tlib::gtest::init(a,q);
 
-        tlib::detail::mtm_cm(
-                    q,p,
-                    a.data(), na.data(), pia.data(),
-                    b.data(), nb.data(),
-                    c.data(), nc.data());
+        detail::mtm_cm(q,p,
+                       a.data(), na.data(), pia.data(),
+                       b.data(), nb.data(),
+                       c.data(), nc.data());
 
-        auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+        auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
     }
 }
@@ -703,7 +696,7 @@ TEST(MatrixTimesMatrix, Case5)
         auto n = na[1];
         auto u = m*2;
 
-        ASSERT_TRUE(tlib::detail::is_case<5>(p,q,rm.data()));
+        ASSERT_TRUE(detail::is_case<5>(p,q,rm.data()));
 
 
         auto a = matrix({m,n}, 1.0, rm);
@@ -715,13 +708,12 @@ TEST(MatrixTimesMatrix, Case5)
 
         tlib::gtest::init(a,q);
 
-        tlib::detail::mtm_rm(
-                    q,p,
-                    a.data(), na.data(), pia.data(),
-                    b.data(), nb.data(),
-                    c.data(), nc.data());
+        detail::mtm_rm(q,p,
+                       a.data(), na.data(), pia.data(),
+                       b.data(), nb.data(),
+                       c.data(), nc.data());
 
-        auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+        auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
     }
@@ -733,7 +725,7 @@ TEST(MatrixTimesMatrix, Case5)
         auto n = na[1];
         auto u = m*2;
 
-        ASSERT_TRUE(tlib::detail::is_case<5>(p,q,rm.data()));
+        ASSERT_TRUE(detail::is_case<5>(p,q,rm.data()));
 
 
         auto a = matrix({m,n}, 1.0, rm);
@@ -745,13 +737,12 @@ TEST(MatrixTimesMatrix, Case5)
 
         tlib::gtest::init(a,q);
 
-        tlib::detail::mtm_rm(
-                    q,p,
-                    a.data(), na.data(), pia.data(),
-                    b.data(), nb.data(),
-                    c.data(), nc.data());
+        detail::mtm_rm(q,p,
+                       a.data(), na.data(), pia.data(),
+                       b.data(), nb.data(),
+                       c.data(), nc.data());
 
-        auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+        auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
         ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
     }
@@ -798,13 +789,13 @@ TEST(MatrixTimesMatrix, Case6)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<6>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<6>(p,q,pia.data()));
 
             tlib::gtest::init(a,q);
 
-            tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
@@ -825,13 +816,13 @@ TEST(MatrixTimesMatrix, Case6)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<6>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<6>(p,q,pia.data()));
 
             tlib::gtest::init(a,q);
 
-            tlib::detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
@@ -859,13 +850,13 @@ TEST(MatrixTimesMatrix, Case6)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<6>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<6>(p,q,pia.data()));
 
             tlib::gtest::init(a, q);
 
-            tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
 
@@ -886,13 +877,13 @@ TEST(MatrixTimesMatrix, Case6)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<6>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<6>(p,q,pia.data()));
 
             tlib::gtest::init(a, q);
 
-            tlib::detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
 
@@ -922,13 +913,13 @@ TEST(MatrixTimesMatrix, Case6)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<6>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<6>(p,q,pia.data()));
 
             init(a, q);
 
-            tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
@@ -949,13 +940,13 @@ TEST(MatrixTimesMatrix, Case6)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<6>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<6>(p,q,pia.data()));
 
             init(a, q);
 
-            tlib::detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
@@ -1005,13 +996,13 @@ TEST(MatrixTimesMatrix, Case7)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<7>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<7>(p,q,pia.data()));
 
             tlib::gtest::init(a,q);
 
-            tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
@@ -1032,13 +1023,13 @@ TEST(MatrixTimesMatrix, Case7)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<7>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<7>(p,q,pia.data()));
 
             tlib::gtest::init(a,q);
 
-            tlib::detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
@@ -1066,13 +1057,13 @@ TEST(MatrixTimesMatrix, Case7)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<7>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<7>(p,q,pia.data()));
 
             tlib::gtest::init(a, q);
 
-            tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
         }	// layouts
 
@@ -1091,13 +1082,13 @@ TEST(MatrixTimesMatrix, Case7)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<7>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<7>(p,q,pia.data()));
 
             tlib::gtest::init(a, q);
 
-            tlib::detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
         }	// layouts
 
@@ -1125,13 +1116,13 @@ TEST(MatrixTimesMatrix, Case7)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<7>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<7>(p,q,pia.data()));
 
             tlib::gtest::init(a, q);
 
-            tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
@@ -1152,13 +1143,13 @@ TEST(MatrixTimesMatrix, Case7)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<7>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<7>(p,q,pia.data()));
 
             tlib::gtest::init(a, q);
 
-            tlib::detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_cm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
-            auto qh = tlib::detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
+            auto qh = detail::inverse_mode(a.pi().begin(),a.pi().end(),q);
             ttm_check(p,q,qh, 0ul,0ul, a.container(),a.n(),a.w(),a.pi(), c.container(),c.n(),c.w(),c.pi());
 
         }	// layouts
@@ -1212,11 +1203,11 @@ TEST(MatrixTimesMatrix, Case8)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<7>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<7>(p,q,pia.data()));
 
             init(a,q);
 
-            tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
             //std::cout << "q = " << q << std::endl;
             //std::cout << "a = " << a << std::endl;
@@ -1254,11 +1245,11 @@ TEST(MatrixTimesMatrix, Case8)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<7>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<7>(p,q,pia.data()));
 
             init(a, q);
 
-            tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
             //std::cout << "q = " << q << std::endl;
             //std::cout << "a = " << a << std::endl;
@@ -1299,11 +1290,11 @@ TEST(MatrixTimesMatrix, Case8)
             const auto nc = c.n();
             const auto pia = a.pi();
 
-            ASSERT_TRUE(tlib::detail::is_case<7>(p,q,pia.data()));
+            ASSERT_TRUE(detail::is_case<7>(p,q,pia.data()));
 
             init(a, q);
 
-            tlib::detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
+            detail::mtm_rm( q,p,   a.data(), na.data(), pia.data(),  b.data(), nb.data(),  c.data(), nc.data());
 
             //std::cout << "q = " << q << std::endl;
             //std::cout << "a = " << a << std::endl;

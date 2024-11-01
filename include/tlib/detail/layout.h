@@ -23,7 +23,7 @@
 
 
 
-namespace tlib::detail
+namespace tlib::ttm::detail
 {
 
 template<class InputIt>
@@ -60,7 +60,7 @@ inline void compute_k_order_layout(OutputIt begin, OutputIt end, size_t k)
 	auto const n_signed = std::distance(begin,end);
 	
 	if(n_signed <= 0) 
-		throw std::runtime_error("Error in tlib::detail::compute_k_order: range provided by begin and end not correct!");
+        throw std::runtime_error("Error in tlib::ttm::detail::compute_k_order: range provided by begin and end not correct!");
 	
 	auto const n = static_cast<std::make_unsigned_t<decltype(n_signed)>>(n_signed);
 	assert(n > 0);
@@ -122,16 +122,16 @@ inline auto inverse_mode(InputIt layout_begin, InputIt layout_end, SizeType mode
 {		
   using value_type = typename std::iterator_traits<InputIt>::value_type;
 	if(!is_valid_layout(layout_begin,layout_end))
-		throw std::runtime_error("Error in tlib::detail::inverse_mode(): input layout is not valid.");
+        throw std::runtime_error("Error in tlib::ttm::detail::inverse_mode(): input layout is not valid.");
 				
 	auto const p_ = std::distance(layout_begin,layout_end);
 	if(p_<= 0)
-		throw std::runtime_error("Error in tlib::detail::inverse_mode(): input layout is invalid.");
+        throw std::runtime_error("Error in tlib::ttm::detail::inverse_mode(): input layout is invalid.");
 		
 	auto const p = static_cast<value_type>(p_);
 	
   if(mode==0u || mode > SizeType(p))
-    throw std::runtime_error("Error in tlib::detail::inverse_mode(): mode should be one-based and equal to or less than layout size.");
+    throw std::runtime_error("Error in tlib::ttm::detail::inverse_mode(): mode should be one-based and equal to or less than layout size.");
 	
 	auto inverse_mode = value_type{0u};
 	for(; inverse_mode < p; ++inverse_mode)
@@ -146,4 +146,4 @@ inline auto inverse_mode(InputIt layout_begin, InputIt layout_end, SizeType mode
 
 
 
-} // namespace tlib::detail
+} // namespace tlib::ttm::detail

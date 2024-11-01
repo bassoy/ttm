@@ -19,24 +19,9 @@
 
 // ttm
 
-namespace tlib::parallel_policy
+namespace tlib::ttm::parallel_policy
 {
-/*
-struct sequential_t     {}; // multithreaded gemm
-struct threaded_gemm_t  {}; // multithreaded gemm
-struct omp_taskloop_t   {}; // omp_taskloops with single threaded gemm
-struct omp_forloop_t    {}; // omp_for with single threaded gemm
-struct omp_forloop_and_threaded_gemm_t  {}; // omp_for with multi-threaded gemm
-struct batched_gemm_t   {}; // multithreaded batched gemm with collapsed loops
-struct combined_t       {};
 
-inline constexpr sequential_t     sequential;
-inline constexpr threaded_gemm_t  threaded_gemm;
-inline constexpr omp_taskloop_t   omp_taskloop;
-inline constexpr omp_forloop_t    omp_forloop;
-inline constexpr batched_gemm_t   batched_gemm;
-inline constexpr combined_t       combined;
-*/
 struct sequential_t          {}; // sequential loops and sequential gemm
 struct parallel_blas_t       {}; // multithreaded gemm
 struct parallel_loop_t       {}; // omp_for with single threaded gemm
@@ -54,7 +39,7 @@ inline constexpr combined_t           combined;
 }
 
 
-namespace tlib::slicing_policy
+namespace tlib::ttm::slicing_policy
 {
 struct slice_t     {};
 struct subtensor_t {};
@@ -68,7 +53,7 @@ inline constexpr subtensor_t  subtensor;
 }
 
 
-namespace tlib::fusion_policy
+namespace tlib::ttm::fusion_policy
 {
 struct none_t     {};
 struct outer_t    {};

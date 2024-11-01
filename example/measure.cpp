@@ -6,6 +6,8 @@
 #include <string>
 #include <chrono> // for high precision timing
 
+using namespace tlib::ttm;
+
 static const auto gdims = std::string("abcdefghij");
 
 inline 
@@ -72,9 +74,9 @@ get_gflops(double nn, double cdimc, double cdima)
 
 template<class value, class parallel_policy, class slicing_policy, class fusion_policy>
 inline void measure(unsigned q, 
-                    tlib::tensor<value> const& A, 
-                    tlib::tensor<value> const& B, 
-                    tlib::tensor<value>& C,
+                    tensor<value> const& A, 
+                    tensor<value> const& B, 
+                    tensor<value>& C,
                     parallel_policy pp,
                     slicing_policy sp,
                     fusion_policy fp)
@@ -87,8 +89,7 @@ inline void measure(unsigned q,
     for(auto i = 0u; i < iters; ++i){
         std::fill(cache.begin(), cache.end(),char{});
         auto start = std::chrono::high_resolution_clock::now();
-        tlib::ttm(
-            pp, sp, fp,
+        ttm(pp, sp, fp,
             q, A.order(),
             A.data().data(), A.shape().data(), A.strides().data(), A.layout().data(),
             B.data().data(), B.shape().data(),                     B.layout().data(),
@@ -109,7 +110,7 @@ inline void measure(unsigned q,
     std::cout << "Time : " << avg_time_s << " [s]" << std::endl;
     std::cout << "Gflops : " <<  gflops << " [gflops]" << std::endl;
     std::cout << "Performance : " <<  gflops/avg_time_s << " [gflops/s]" << std::endl;
-    std::cout << "Performance : " <<  gflops/avg_time_s/tlib::detail::cores << " [gflops/s/core]" << std::endl;
+    std::cout << "Performance : " <<  gflops/avg_time_s/detail::cores << " [gflops/s/core]" << std::endl;
 }
 
 
@@ -122,7 +123,7 @@ int main(int argc, char* argv[])
 {
 
     using value    = double;
-    using tensor   = tlib::tensor<value>;     // or std::array<value_t,N>
+    using tensor   = tensor<value>;     // or std::array<value_t,N>
     using shape    = typename tensor::shape_t;
 
     assert(argc > 4);
@@ -159,9 +160,9 @@ int main(int argc, char* argv[])
     const auto pc = pa;
 
     // layout tuple for A and C
-    const auto pia = tlib::detail::generate_k_order_layout(pa,1ul);
-    const auto pib = tlib::detail::generate_k_order_layout(pb,1ul);
-    const auto pic = tlib::detail::generate_k_order_layout(pc,1ul);
+    const auto pia = detail::generate_k_order_layout(pa,1ul);
+    const auto pib = detail::generate_k_order_layout(pb,1ul);
+    const auto pic = detail::generate_k_order_layout(pc,1ul);
 
     auto A = tensor( na, pia );
     auto B = tensor( nb, pib );
@@ -172,37 +173,37 @@ int main(int argc, char* argv[])
     
     if(method == 1 || method == 7){
       std::cout << "Algorithm: <par-loop | slice-2d, all>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::parallel_loop,   tlib::slicing_policy::slice,     tlib::fusion_policy::all  );
+      measure(q, A, B, C, parallel_policy::parallel_loop,   slicing_policy::slice,     fusion_policy::all  );
       std::cout << "---------" << std::endl << std::endl;
     }
     
     if(method == 2 || method == 7){
       std::cout << "Algorithm: <par-loop | subtensor, all>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::parallel_loop,   tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
+      measure(q, A, B, C, parallel_policy::parallel_loop,   slicing_policy::subtensor, fusion_policy::all );
       std::cout << "---------" << std::endl << std::endl;
     }
     
     if(method == 3 || method == 7){
       std::cout << "Algorithm: <par-gemm | slice-2d, none>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::parallel_blas, tlib::slicing_policy::slice,     tlib::fusion_policy::none );
+      measure(q, A, B, C, parallel_policy::parallel_blas, slicing_policy::slice,     fusion_policy::none );
       std::cout << "---------" << std::endl << std::endl; 
     }
     
     if(method == 4 || method == 7){
       std::cout << "Algorithm: <par-gemm | slice-2d, all>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::parallel_blas, tlib::slicing_policy::slice,     tlib::fusion_policy::all );
+      measure(q, A, B, C, parallel_policy::parallel_blas, slicing_policy::slice,     fusion_policy::all );
       std::cout << "---------" << std::endl << std::endl; 
     }    
 
     if(method == 5 || method == 7){
       std::cout << "Algorithm: <par-gemm | subtensor, none>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::parallel_blas, tlib::slicing_policy::subtensor, tlib::fusion_policy::none );
+      measure(q, A, B, C, parallel_policy::parallel_blas, slicing_policy::subtensor, fusion_policy::none );
       std::cout << "---------" << std::endl << std::endl;  
     } 
     
     if(method == 6 || method == 7){
       std::cout << "Algorithm: <par-gemm | slice-qd, all>" << std::endl;
-      measure(q, A, B, C, tlib::parallel_policy::parallel_blas, tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
+      measure(q, A, B, C, parallel_policy::parallel_blas, slicing_policy::subtensor, fusion_policy::all );
       std::cout << "---------" << std::endl << std::endl;  
     } 
     

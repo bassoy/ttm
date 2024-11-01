@@ -17,7 +17,7 @@
 
 #pragma once
 
-namespace tlib::detail
+namespace tlib::ttm::detail
 {
 
 
@@ -126,4 +126,4 @@ constexpr auto at_at_1(size_type const j_view, container_type const& w_view, con
 
 
 
-} // namespace detail
+} // namespace tlib::ttm::detail

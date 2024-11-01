@@ -4,11 +4,12 @@
 #include <numeric>
 #include <iostream>
 
+using namespace tlib::ttm;
 
 int main()
 {
     using value_t    = float;
-    using tensor_t   = tlib::tensor<value_t>;     // or std::array<value_t,N>
+    using tensor_t   = tensor<value_t>;     // or std::array<value_t,N>
     using shape_t    = typename tensor_t::shape_t;
 
     // shape tuple for A
@@ -25,8 +26,8 @@ int main()
     auto pb = nb.size();
 
     // layout tuple for A and C
-    auto pia = tlib::detail::generate_k_order_layout(pa,1ul);
-    auto pib = tlib::detail::generate_k_order_layout(pb,1ul);
+    auto pia = detail::generate_k_order_layout(pa,1ul);
+    auto pib = detail::generate_k_order_layout(pb,1ul);
 
     auto A = tensor_t( na, pia );
     auto B = tensor_t( nb, pib );

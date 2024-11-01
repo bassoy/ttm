@@ -55,7 +55,7 @@
 #include <cstdlib>
 #include <cstdio>
 
-namespace tlib::detail{
+namespace tlib::ttm::detail{
 
 static inline unsigned get_number_cores() 
 {
@@ -145,8 +145,6 @@ inline void set_omp_threads_max()
 {
 #ifdef _OPENMP
     omp_set_num_threads(cores);
-#else
-    return 1;  
 #endif
 }
 
@@ -311,7 +309,7 @@ inline void ttm(
             mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
 	}
 	else {
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = inverse_mode(pia, pia+p, q);
 
         using namespace std::placeholders;
 
@@ -320,8 +318,8 @@ inline void ttm(
         auto nq     = na[q-1];
         auto wq     = wa[q-1];
 
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+        auto gemm_col = std::bind(gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
+        auto gemm_row = std::bind(gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
         if(is_cm) loops_over_gemm_with_slices(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
         else      loops_over_gemm_with_slices(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
@@ -351,7 +349,7 @@ inline void ttm(
             mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
 	}
     else {
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
         using namespace std::placeholders;
 
@@ -360,8 +358,8 @@ inline void ttm(
         auto nq     = na[q-1];
         auto wq     = wa[q-1];
 
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
         if(is_cm) loops_over_gemm_with_slices(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
         else      loops_over_gemm_with_slices(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
@@ -394,7 +392,7 @@ inline void ttm(
         assert(p>2);
         assert(q>0);
 
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
         // outer = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const outer = product(na, pia, qh+1,p+1);
@@ -417,8 +415,8 @@ inline void ttm(
         //std::cout << "m=" << m << ", n=" << n1 << ", k=" << nq << std::endl;
 
         using namespace std::placeholders;
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
         
         //std::cout << "Get blas threads: " << get_blas_threads() << std::endl;
 
@@ -463,7 +461,7 @@ inline void ttm(
         assert(p>2);
         assert(q>0);
 
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const num = product(na, pia, qh+1,p+1);
@@ -479,8 +477,8 @@ inline void ttm(
         auto nq     = na[q-1];
         auto wq     = wa[q-1];
 
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq,m,wq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq,m,wq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
         #pragma omp parallel for schedule(static) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < num; ++k){
@@ -526,7 +524,7 @@ inline void ttm(
         assert(p>2);
         assert(q>0);
 
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
         // outer = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const outer = product(na, pia, qh+1,p+1);
@@ -547,8 +545,8 @@ inline void ttm(
         auto wq     = wa[q-1];
 
         using namespace std::placeholders;
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
         #pragma omp parallel for schedule(static) collapse(2) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < outer; ++k){
@@ -598,7 +596,7 @@ inline void ttm(
         assert(p>2);
         assert(q>0);
 
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
         // outer = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const outer = product(na, pia, qh+1,p+1);
@@ -619,8 +617,8 @@ inline void ttm(
         auto wq     = wa[q-1];
 
         using namespace std::placeholders;
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
 
         #pragma omp parallel for schedule(static) collapse(2) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < outer; ++k){
@@ -664,7 +662,7 @@ inline void ttm(
         assert(p>2);
         assert(q>0);
 
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
         // outer = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const outer = product(na, pia, qh+1,p+1);
@@ -685,8 +683,8 @@ inline void ttm(
         auto wq     = wa[q-1];
 
         using namespace std::placeholders;
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
         
         
         const auto ompthreads = unsigned (double(cores)*ratio);
@@ -731,15 +729,15 @@ inline void ttm(
             mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
     }
     else {
-        auto const qh  = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh  = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
         auto const nnq = product(na, pia, 1, qh);
         auto const m   = nc[q-1];
         auto const nq  = na[q-1];
 
 
         using namespace std::placeholders;
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
 
         if(is_cm) loops_over_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
         else      loops_over_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
@@ -770,15 +768,15 @@ inline void ttm(
             mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
     }
     else {
-        auto const qh  = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh  = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
         auto const nnq = product(na, pia, 1, qh);
         auto const m   = nc[q-1];
         auto const nq  = na[q-1];
 
 
         using namespace std::placeholders;
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
 
         if(is_cm) loops_over_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
         else      loops_over_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
@@ -812,7 +810,7 @@ inline void ttm(
         assert(q>0);
         assert(p>2);
 
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const num = product(na, pia, qh+1,p+1);
@@ -828,8 +826,8 @@ inline void ttm(
         auto nq     = na[q-1];
 
         using namespace std::placeholders;
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
         
         for(size_t k = 0u; k < num; ++k){
             auto aa = a+k*waq;
@@ -868,7 +866,7 @@ inline void ttm(
         assert(q>0);
         assert(p>2);
 
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const num = product(na, pia, qh+1,p+1);
@@ -884,8 +882,8 @@ inline void ttm(
         auto nq     = na[q-1];
 
         using namespace std::placeholders;
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
         
         #pragma omp parallel for schedule(static) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < num; ++k){
@@ -931,7 +929,7 @@ inline void ttm(
         assert(q>0);
         assert(p>2);
 
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const num = product(na, pia, qh+1,p+1);
@@ -947,8 +945,8 @@ inline void ttm(
         auto nq     = na[q-1];
 
         using namespace std::placeholders;
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
 
         #pragma omp parallel for schedule(dynamic) num_threads(cores) proc_bind(spread)
         for(size_t k = 0u; k < num; ++k){
@@ -990,7 +988,7 @@ inline void ttm(
         assert(q>0);
         assert(p>2);
 
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto const num = product(na, pia, qh+1,p+1);
@@ -1006,8 +1004,8 @@ inline void ttm(
         auto nq     = na[q-1];
 
         using namespace std::placeholders;
-        auto gemm_col = std::bind(tlib::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
-        auto gemm_row = std::bind(tlib::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
+        auto gemm_col = std::bind(tlib::ttm::detail::gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
+        auto gemm_row = std::bind(tlib::ttm::detail::gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
         
         const auto ompthreads = unsigned (double(cores)*ratio);
         const auto blasthreads = unsigned (double(cores)*(1.0-ratio));
@@ -1053,7 +1051,7 @@ inline void ttm(
         assert(q>0);
         assert(p>2);
 #ifdef USE_MKL
-        auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+        auto const qh = inverse_mode(pia, pia+p, q);
 
         // num = n[pi[qh+1]] * n[pi[qh+2]] * ... * n[pi[p]]
         auto pp = product(na, pia, qh+1,p+1);
@@ -1150,7 +1148,7 @@ inline void ttm(
     assert(q>0);
     assert(p>2);
     
-    auto const qh = tlib::detail::inverse_mode(pia, pia+p, q);
+    auto const qh = tlib::ttm::detail::inverse_mode(pia, pia+p, q);
 
     // inner = n[pi[2]] * ... * n[pi[qh-1]] with pi[qh] = q
     auto const inner = product(na, pia, 2, qh);    
@@ -1184,4 +1182,4 @@ inline void ttm(
 }
 
 
-} // namespace tlib::detail
+} // namespace tlib::ttm::detail

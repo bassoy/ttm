@@ -25,7 +25,7 @@
 #include "layout.h"
 
 
-namespace tlib::detail
+namespace tlib::ttm::detail
 {
 
 template<class InputIt1, class InputIt2, class OutputIt>
@@ -100,4 +100,4 @@ inline bool is_valid_strides(InputIt1 layout_begin, InputIt1 layout_end, InputIt
 	//	[stride_begin]( auto l ) {return stride_begin[l-2] > stride_begin[l-1];} );
 }
 
-} // namespace tlib::detail
+} // namespace tlib::ttm::detail

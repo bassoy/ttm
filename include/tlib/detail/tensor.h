@@ -28,7 +28,7 @@
 
 
 
-namespace tlib
+namespace tlib::ttm
 {
 
 template<class value_t>
@@ -120,14 +120,14 @@ private:
 	vector_t _data;
 };
 	
-}
+} // namespace tlib::ttm
 
 
 
 
 
 template<class value_type>
-void stream_out(std::ostream& out, tlib::tensor<value_type> const& a, std::size_t j, unsigned r)
+void stream_out(std::ostream& out, tlib::ttm::tensor<value_type> const& a, std::size_t j, unsigned r)
 {
     const auto& w = a.strides();
     const auto& n = a.shape();
@@ -157,7 +157,7 @@ void stream_out(std::ostream& out, tlib::tensor<value_type> const& a, std::size_
 
 
 template<class value_type>
-std::ostream& operator<< (std::ostream& out, tlib::tensor<value_type> const& a)
+std::ostream& operator<< (std::ostream& out, tlib::ttm::tensor<value_type> const& a)
 {
     const auto& w = a.strides();
     const auto& n = a.shape();

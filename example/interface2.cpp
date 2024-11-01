@@ -4,11 +4,12 @@
 #include <numeric>
 #include <iostream>
 
+using namespace tlib::ttm;
 
 int main()
 {
     using value_t    = float;
-    using tensor_t   = tlib::tensor<value_t>;     // or std::array<value_t,N>
+    using tensor_t   = tensor<value_t>;     // or std::array<value_t,N>
     using shape_t    = typename tensor_t::shape_t;
 
     // shape tuple for A
@@ -25,8 +26,8 @@ int main()
     auto pb = nb.size();
 
     // layout tuple for A and C
-    auto pia = tlib::detail::generate_k_order_layout(pa,1ul);
-    auto pib = tlib::detail::generate_k_order_layout(pb,1ul);
+    auto pia = detail::generate_k_order_layout(pa,1ul);
+    auto pib = detail::generate_k_order_layout(pb,1ul);
 
     auto A = tensor_t( na, pia );
     auto B = tensor_t( nb, pib );
@@ -55,10 +56,10 @@ int main()
 
 
   // correct shape, layout and strides of the output tensors C1,C2 are automatically computed and returned by the functions.  
-    auto C1 = tlib::ttm(q, A,B, tlib::parallel_policy::parallel_blas , tlib::slicing_policy::slice,     tlib::fusion_policy::none );
-    auto C2 = tlib::ttm(q, A,B, tlib::parallel_policy::parallel_loop , tlib::slicing_policy::slice,     tlib::fusion_policy::all );
-    auto C3 = tlib::ttm(q, A,B, tlib::parallel_policy::parallel_loop , tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
-    auto C4 = tlib::ttm(q, A,B, tlib::parallel_policy::batched_gemm  , tlib::slicing_policy::subtensor, tlib::fusion_policy::all );
+    auto C1 = ttm(q, A,B, parallel_policy::parallel_blas , slicing_policy::slice,     fusion_policy::none );
+    auto C2 = ttm(q, A,B, parallel_policy::parallel_loop , slicing_policy::slice,     fusion_policy::all );
+    auto C3 = ttm(q, A,B, parallel_policy::parallel_loop , slicing_policy::subtensor, fusion_policy::all );
+    auto C4 = ttm(q, A,B, parallel_policy::batched_gemm  , slicing_policy::subtensor, fusion_policy::all );
 
 
     std::cout << "C1 = " << C1 << std::endl;
