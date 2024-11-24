@@ -287,11 +287,24 @@ TEST(TensorTimesMatrix, ParallelGemmSliceNoFusion)
     check_tensor_times_matrix<vt,st,ep,sp,fp,4u>(2u,3);
 }
 
-TEST(TensorTimesMatrix, ParallelTaskSliceNoFusion)
+TEST(TensorTimesMatrix, ParallelTaskLoopSliceNoFusion)
 {
     using vt = double;
     using st = std::size_t;
     using ep = parallel_policy::parallel_taskloop_t;
+    using sp = slicing_policy::slice_t;
+    using fp = fusion_policy::none_t;
+
+    check_tensor_times_matrix<vt,st,ep,sp,fp,2u>(2u,3);
+    check_tensor_times_matrix<vt,st,ep,sp,fp,3u>(2u,3);
+    check_tensor_times_matrix<vt,st,ep,sp,fp,4u>(2u,3);
+}
+
+TEST(TensorTimesMatrix, ParallelTaskSliceNoFusion)
+{
+    using vt = double;
+    using st = std::size_t;
+    using ep = parallel_policy::parallel_task_t;
     using sp = slicing_policy::slice_t;
     using fp = fusion_policy::none_t;
 
@@ -379,11 +392,25 @@ TEST(TensorTimesMatrix, SequentialSubtensorNoFusion)
 }
 
 
-TEST(TensorTimesMatrix, ParallelTaskSubtensorNone)
+TEST(TensorTimesMatrix, ParallelTaskLoopSubtensorNone)
 {
     using vt = double;
     using st = std::size_t;
     using ep = parallel_policy::parallel_taskloop_t;
+    using sp = slicing_policy::subtensor_t;
+    using fp = fusion_policy::none_t;
+
+    check_tensor_times_matrix<vt,st,ep,sp,fp,2u>(2u,3);
+    check_tensor_times_matrix<vt,st,ep,sp,fp,3u>(2u,3);
+    check_tensor_times_matrix<vt,st,ep,sp,fp,4u>(2u,3);
+//    check_tensor_times_matrix<vt,st,ep,sp,fp,5u>(2u,3);
+}
+
+TEST(TensorTimesMatrix, ParallelTaskSubtensorNone)
+{
+    using vt = double;
+    using st = std::size_t;
+    using ep = parallel_policy::parallel_task_t;
     using sp = slicing_policy::subtensor_t;
     using fp = fusion_policy::none_t;
 

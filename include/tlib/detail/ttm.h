@@ -236,17 +236,46 @@ inline void taskloops_over_gemm_with_slices (
               value_t *c, size_t const*const nc, size_t const*const wc)
 {
   if(r>1){
-#pragma omp task untied
-    {
     if (r == qh) { // q == pia[r]
       taskloops_over_gemm_with_slices(std::forward<gemm_t>(gemm), r-1, qh,   a,na,wa,pia,  b,  c,nc,wc);
     }
     else{ //  r>1 && r != qh
       auto pia_r = pia[r-1]-1;
-      for(unsigned i = 0; i < na[pia_r]; ++i, a+=wa[pia_r], c+=wc[pia_r]){
-        taskloops_over_gemm_with_slices(std::forward<gemm_t>(gemm), r-1, qh,  a,na,wa,pia,  b,  c,nc,wc);
+#pragma omp taskloop untied
+      for(unsigned i = 0; i < na[pia_r]; ++i){
+        auto aa=a+i*wa[pia_r];
+        auto cc=c+i*wc[pia_r];
+        taskloops_over_gemm_with_slices(std::forward<gemm_t>(gemm), r-1, qh,  aa,na,wa,pia,  b,  cc,nc,wc);
       }
     }
+  }
+  else {
+    gemm( a, b, c );
+  }
+}
+
+
+template<class value_t, class size_t, class gemm_t>
+inline void tasks_over_gemm_with_slices (
+        gemm_t && gemm,
+        unsigned const r, // starts with p
+        unsigned const qh, // 1 <= qh <= p with \hat{q} = pi^{-1}(q)
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b,
+              value_t *c, size_t const*const nc, size_t const*const wc)
+{
+#pragma omp task untied
+  if(r>1){
+    if (r == qh) { // q == pia[r]
+      tasks_over_gemm_with_slices(std::forward<gemm_t>(gemm), r-1, qh,   a,na,wa,pia,  b,  c,nc,wc);
+    }
+    else{ //  r>1 && r != qh
+      auto pia_r = pia[r-1]-1;
+      for(unsigned i = 0; i < na[pia_r]; ++i){
+        auto aa=a+i*wa[pia_r];
+        auto cc=c+i*wc[pia_r];
+        tasks_over_gemm_with_slices(std::forward<gemm_t>(gemm), r-1, qh,  aa,na,wa,pia,  b,  cc,nc,wc);
+      }
     }
   }
   else {
@@ -297,18 +326,48 @@ inline void taskloops_over_gemm_with_subtensors (
         const value_t *b,
               value_t *c, size_t const*const nc, size_t const*const wc )
 {
+//#pragma omp task untied
   if(r>1){
-#pragma omp task untied
-    {
     if (r <= qh) {
       taskloops_over_gemm_with_subtensors  (std::forward<gemm_t>(gemm), r-1, qh,   a,na,wa,pia,  b,  c,nc,wc);
     }
     else if (r > qh){
       auto pia_r = pia[r-1]-1u;
-      for(size_t i = 0; i < na[pia_r]; ++i, a+=wa[pia_r], c+=wc[pia_r]){
-        taskloops_over_gemm_with_subtensors (std::forward<gemm_t>(gemm), r-1, qh,  a,na,wa,pia,  b,  c,nc,wc);
+#pragma omp taskloop untied
+      for(size_t i = 0; i < na[pia_r]; ++i){
+        auto aa=a+i*wa[pia_r];
+        auto cc=c+i*wc[pia_r];      
+        taskloops_over_gemm_with_subtensors (std::forward<gemm_t>(gemm), r-1, qh,  aa,na,wa,pia,  b,  cc,nc,wc);
       }
     }
+  }
+  else {
+    gemm(a,b,c);
+  }
+}
+
+
+template<class value_t, class size_t, class gemm_t>
+inline void tasks_over_gemm_with_subtensors (
+        gemm_t && gemm,
+        unsigned const r, // starts with p
+        unsigned const qh, // qhat one-based
+        const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+        const value_t *b,
+              value_t *c, size_t const*const nc, size_t const*const wc )
+{
+#pragma omp task untied
+  if(r>1){
+    if (r <= qh) {
+      tasks_over_gemm_with_subtensors  (std::forward<gemm_t>(gemm), r-1, qh,   a,na,wa,pia,  b,  c,nc,wc);
+    }
+    else if (r > qh){
+      auto pia_r = pia[r-1]-1u;
+      for(size_t i = 0; i < na[pia_r]; ++i){
+        auto aa=a+i*wa[pia_r];
+        auto cc=c+i*wc[pia_r];      
+        tasks_over_gemm_with_subtensors (std::forward<gemm_t>(gemm), r-1, qh,  aa,na,wa,pia,  b,  cc,nc,wc);
+      }
     }
   }
   else {
@@ -427,12 +486,11 @@ inline void ttm(parallel_policy::parallel_taskloop_t, slicing_policy::slice_t, f
                 const value_t *b, size_t const*const nb,                        size_t const*const pib,
                       value_t *c, size_t const*const nc, size_t const*const wc )
 {
-    set_blas_threads_max();
-    assert(get_blas_threads() > 1u || get_blas_threads() <= cores);
-
+    set_omp_nested();
     auto is_cm = pib[0] == 1;
-
     if(!is_case<8>(p,q,pia)){
+        set_blas_threads_max();
+        assert(get_blas_threads() > 1u || get_blas_threads() <= cores);    
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -450,9 +508,61 @@ inline void ttm(parallel_policy::parallel_taskloop_t, slicing_policy::slice_t, f
 
         auto gemm_col = std::bind(gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
         auto gemm_row = std::bind(gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+        
+#pragma omp parallel num_threads(cores) 
+        {
+            set_blas_threads_min();
+            assert(get_blas_threads() == 1u);        
+#pragma omp single
+            {
+                  if(is_cm) taskloops_over_gemm_with_slices(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+                  else      taskloops_over_gemm_with_slices(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+            }
+        }
+    }
+}
 
-        if(is_cm) taskloops_over_gemm_with_slices(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
-        else      taskloops_over_gemm_with_slices(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+
+template<class value_t, class size_t>
+inline void ttm(parallel_policy::parallel_task_t, slicing_policy::slice_t, fusion_policy::none_t,
+                unsigned const q, unsigned const p,
+                const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+                const value_t *b, size_t const*const nb,                        size_t const*const pib,
+                      value_t *c, size_t const*const nc, size_t const*const wc )
+{
+
+    set_omp_nested();
+    auto is_cm = pib[0] == 1;
+    if(!is_case<8>(p,q,pia)){
+        set_blas_threads_max();
+        assert(get_blas_threads() > 1u || get_blas_threads() <= cores);    
+        if(is_cm)
+            mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
+        else
+            mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+    }
+    else {
+        auto const qh = inverse_mode(pia, pia+p, q);
+
+        using namespace std::placeholders;
+
+        auto n1     = na[pia[0]-1];
+        auto m      = nc[q-1];
+        auto nq     = na[q-1];
+        auto wq     = wa[q-1];
+        auto gemm_col = std::bind(gemm_col_tr2::run<value_t>,_1,_2,_3,   n1,m,nq,   wq, m,wq); // a,b,c
+        auto gemm_row = std::bind(gemm_row::    run<value_t>,_2,_1,_3,   m,n1,nq,   nq,wq,wq); // b,a,c
+        
+#pragma omp parallel num_threads(cores) 
+        {
+            set_blas_threads_min();
+            assert(get_blas_threads() == 1u);        
+#pragma omp single
+            {
+                  if(is_cm) tasks_over_gemm_with_slices(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+                  else      tasks_over_gemm_with_slices(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+            }
+        }
     }
 }
 
@@ -886,12 +996,12 @@ inline void ttm(
                   value_t *c, size_t const*const nc, size_t const*const wc
             )
 {
-    set_blas_threads_max();
-    assert(get_blas_threads() > 1 || get_blas_threads() <= cores);
-    
-
+  
+    set_omp_nested();
     auto is_cm = pib[0] == 1;
     if(!is_case<8>(p,q,pia)){
+        set_blas_threads_max();
+        assert(get_blas_threads() > 1 || get_blas_threads() <= cores);    
         if(is_cm)
             mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
         else
@@ -908,9 +1018,60 @@ inline void ttm(
         auto gemm_col = std::bind(gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
         auto gemm_row = std::bind(gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
 
-        if(is_cm) taskloops_over_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
-        else      taskloops_over_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+#pragma omp parallel num_threads(cores) 
+        {
+            set_blas_threads_min();
+            assert(get_blas_threads() == 1);        
+#pragma omp single
+            {
+                if(is_cm) taskloops_over_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+                else      taskloops_over_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+            }
+        }
+    }
+}
 
+
+template<class value_t, class size_t>
+inline void ttm(
+            parallel_policy::parallel_task_t, slicing_policy::subtensor_t, fusion_policy::none_t,
+            unsigned const q, unsigned const p,
+            const value_t *a, size_t const*const na, size_t const*const wa, size_t const*const pia,
+            const value_t *b, size_t const*const nb, size_t const*const pib,
+                  value_t *c, size_t const*const nc, size_t const*const wc
+            )
+{
+  
+    set_omp_nested();
+    auto is_cm = pib[0] == 1;
+    if(!is_case<8>(p,q,pia)){
+        set_blas_threads_max();
+        assert(get_blas_threads() > 1 || get_blas_threads() <= cores);    
+        if(is_cm)
+            mtm_cm(q, p,  a, na, pia, b, nb, c, nc );
+        else
+            mtm_rm(q, p,  a, na, pia, b, nb, c, nc );
+    }
+    else {
+        auto const qh  = inverse_mode(pia, pia+p, q);
+        auto const nnq = product(na, pia, 1, qh);
+        auto const m   = nc[q-1];
+        auto const nq  = na[q-1];
+
+        using namespace std::placeholders;
+        auto gemm_col = std::bind(gemm_col_tr2::run<value_t>,_1,_2,_3,   nnq,m,nq,   nnq, m,nnq); // a,b,c
+        auto gemm_row = std::bind(gemm_row::    run<value_t>,_2,_1,_3,   m,nnq,nq,   nq,nnq,nnq); // b,a,c
+
+#pragma omp parallel num_threads(cores) 
+        {
+            set_blas_threads_min();
+            assert(get_blas_threads() == 1);        
+#pragma omp single
+            {
+                if(is_cm) tasks_over_gemm_with_subtensors(gemm_col, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+                else      tasks_over_gemm_with_subtensors(gemm_row, p, qh,  a,na,wa,pia,   b,  c,nc,wc);
+            }
+        }
     }
 }
 
