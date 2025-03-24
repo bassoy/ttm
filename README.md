@@ -103,3 +103,21 @@ int main()
 */
 }
 ```
+
+
+## Citation
+If you want to refer to TTM as part of a research paper, please cite the article [Design of a high-performance tensor–matrix multiplication with BLAS](https://doi.org/10.1016/j.jocs.2025.102568)
+
+```
+@article{ttm:bassoy:2025,
+title = {Design of a high-performance tensor–matrix multiplication with BLAS},
+journal = {Journal of Computational Science},
+volume = {87},
+pages = {102568},
+year = {2025},
+issn = {1877-7503},
+doi = {https://doi.org/10.1016/j.jocs.2025.102568},
+url = {https://www.sciencedirect.com/science/article/pii/S1877750325000456},
+author = {Cem Savas Bassoy},
+}
+``` 
